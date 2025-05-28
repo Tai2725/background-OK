@@ -15,7 +15,7 @@ export const CONFIG = {
    * @method jwt | amplify | firebase | supabase | auth0
    */
   auth: {
-    method: 'jwt',
+    method: 'supabase',
     skip: false,
     redirectPath: paths.dashboard.root,
   },
@@ -58,4 +58,8 @@ export const CONFIG = {
     url: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
     key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
   },
+  runware: {
+    apiKey: process.env.NEXT_PUBLIC_RUNWARE_API_KEY,
+    apiUrl: process.env.NEXT_PUBLIC_RUNWARE_API_URL,
+  }
 };

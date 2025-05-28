@@ -28,16 +28,16 @@ import { SignUpTerms } from '../../components/sign-up-terms';
 // ----------------------------------------------------------------------
 
 export const SignUpSchema = zod.object({
-  firstName: zod.string().min(1, { message: 'First name is required!' }),
-  lastName: zod.string().min(1, { message: 'Last name is required!' }),
+  firstName: zod.string().min(1, { message: 'Họ là bắt buộc!' }),
+  lastName: zod.string().min(1, { message: 'Tên là bắt buộc!' }),
   email: zod
     .string()
-    .min(1, { message: 'Email is required!' })
-    .email({ message: 'Email must be a valid email address!' }),
+    .min(1, { message: 'Email là bắt buộc!' })
+    .email({ message: 'Email phải là địa chỉ email hợp lệ!' }),
   password: zod
     .string()
-    .min(1, { message: 'Password is required!' })
-    .min(6, { message: 'Password must be at least 6 characters!' }),
+    .min(1, { message: 'Mật khẩu là bắt buộc!' })
+    .min(6, { message: 'Mật khẩu phải có ít nhất 6 ký tự!' }),
 });
 
 // ----------------------------------------------------------------------
@@ -75,7 +75,9 @@ export function SupabaseSignUpView() {
         lastName: data.lastName,
       });
 
-      router.push(paths.auth.supabase.verify);
+      // Store email for verification page
+      localStorage.setItem('signup_email', data.email);
+      router.push(`${paths.auth.supabase.verify}?email=${encodeURIComponent(data.email)}`);
     } catch (error) {
       console.error(error);
       const feedbackMessage = getErrorMessage(error);
@@ -90,22 +92,22 @@ export function SupabaseSignUpView() {
       >
         <Field.Text
           name="firstName"
-          label="First name"
+          label="Họ"
           slotProps={{ inputLabel: { shrink: true } }}
         />
         <Field.Text
           name="lastName"
-          label="Last name"
+          label="Tên"
           slotProps={{ inputLabel: { shrink: true } }}
         />
       </Box>
 
-      <Field.Text name="email" label="Email address" slotProps={{ inputLabel: { shrink: true } }} />
+      <Field.Text name="email" label="Địa chỉ email" slotProps={{ inputLabel: { shrink: true } }} />
 
       <Field.Text
         name="password"
-        label="Password"
-        placeholder="6+ characters"
+        label="Mật khẩu"
+        placeholder="6+ ký tự"
         type={showPassword.value ? 'text' : 'password'}
         slotProps={{
           inputLabel: { shrink: true },
@@ -128,9 +130,9 @@ export function SupabaseSignUpView() {
         type="submit"
         variant="contained"
         loading={isSubmitting}
-        loadingIndicator="Create account..."
+        loadingIndicator="Đang tạo tài khoản..."
       >
-        Create account
+        Tạo tài khoản
       </Button>
     </Box>
   );

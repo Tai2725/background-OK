@@ -22,6 +22,32 @@ export const signInWithPassword = async ({ email, password }) => {
 };
 
 /** **************************************
+ * Sign in with Google OAuth
+ *************************************** */
+
+// ----------------------------------------------------------------------
+
+export const signInWithGoogle = async () => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}${paths.dashboard.root}`,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent',
+      },
+    },
+  });
+
+  if (error) {
+    console.error(error);
+    throw error;
+  }
+
+  return { data, error };
+};
+
+/** **************************************
  * Sign up
  *************************************** */
 
@@ -32,8 +58,12 @@ export const signUp = async ({ email, password, firstName, lastName }) => {
     email,
     password,
     options: {
-      emailRedirectTo: `${window.location.origin}${paths.dashboard.root}`,
-      data: { display_name: `${firstName} ${lastName}` },
+      emailRedirectTo: `${window.location.origin}${paths.auth.supabase.verify}`,
+      data: {
+        display_name: `${firstName} ${lastName}`,
+        first_name: firstName,
+        last_name: lastName,
+      },
     },
   });
 
@@ -43,7 +73,30 @@ export const signUp = async ({ email, password, firstName, lastName }) => {
   }
 
   if (!data?.user?.identities?.length) {
-    throw new Error('This user already exists');
+    throw new Error('Người dùng này đã tồn tại');
+  }
+
+  return { data, error };
+};
+
+/** **************************************
+ * Resend verification email
+ *************************************** */
+
+// ----------------------------------------------------------------------
+
+export const resendVerificationEmail = async ({ email }) => {
+  const { data, error } = await supabase.auth.resend({
+    type: 'signup',
+    email,
+    options: {
+      emailRedirectTo: `${window.location.origin}${paths.auth.supabase.verify}`,
+    },
+  });
+
+  if (error) {
+    console.error(error);
+    throw error;
   }
 
   return { data, error };

@@ -11,6 +11,7 @@ const ROOTS = {
   AUTH: '/auth',
   AUTH_DEMO: '/auth-demo',
   DASHBOARD: '/dashboard',
+  BACKGROUND_GENERATOR: '/background-generator',
 };
 
 // ----------------------------------------------------------------------
@@ -172,5 +173,13 @@ export const paths = {
         edit: `${ROOTS.DASHBOARD}/tour/${MOCK_ID}/edit`,
       },
     },
+  },
+  // BACKGROUND GENERATOR
+  backgroundGenerator: {
+    root: ROOTS.BACKGROUND_GENERATOR,
+    dashboard: `${ROOTS.BACKGROUND_GENERATOR}/dashboard`,
+    generator: `${ROOTS.BACKGROUND_GENERATOR}/generator`,
+    gallery: `${ROOTS.BACKGROUND_GENERATOR}/gallery`,
+    settings: `${ROOTS.BACKGROUND_GENERATOR}/settings`,
   },
 };

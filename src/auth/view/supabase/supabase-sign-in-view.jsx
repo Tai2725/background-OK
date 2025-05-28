@@ -10,6 +10,7 @@ import Box from '@mui/material/Box';
 import Link from '@mui/material/Link';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
+import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 
@@ -23,7 +24,7 @@ import { Form, Field } from 'src/components/hook-form';
 import { useAuthContext } from '../../hooks';
 import { getErrorMessage } from '../../utils';
 import { FormHead } from '../../components/form-head';
-import { signInWithPassword } from '../../context/supabase';
+import { signInWithPassword, signInWithGoogle } from '../../context/supabase';
 
 // ----------------------------------------------------------------------
 
@@ -77,6 +78,17 @@ export function SupabaseSignInView() {
     }
   });
 
+  const handleGoogleSignIn = async () => {
+    try {
+      setErrorMessage('');
+      await signInWithGoogle();
+    } catch (error) {
+      console.error(error);
+      const feedbackMessage = getErrorMessage(error);
+      setErrorMessage(feedbackMessage);
+    }
+  };
+
   const renderForm = () => (
     <Box sx={{ gap: 3, display: 'flex', flexDirection: 'column' }}>
       <Field.Text name="email" label="Email address" slotProps={{ inputLabel: { shrink: true } }} />
@@ -121,11 +133,24 @@ export function SupabaseSignInView() {
         type="submit"
         variant="contained"
         loading={isSubmitting}
-        loadingIndicator="Sign in..."
+        loadingIndicator="Đang đăng nhập..."
       >
-        Sign in
+        Đăng nhập
       </Button>
     </Box>
+  );
+
+  const renderGoogleButton = () => (
+    <Button
+      fullWidth
+      size="large"
+      variant="outlined"
+      onClick={handleGoogleSignIn}
+      startIcon={<Iconify icon="logos:google-icon" />}
+      sx={{ mb: 2 }}
+    >
+      Đăng nhập với Google
+    </Button>
   );
 
   return (
@@ -148,6 +173,12 @@ export function SupabaseSignInView() {
           {errorMessage}
         </Alert>
       )}
+
+      {renderGoogleButton()}
+
+      <Divider sx={{ my: 2 }}>
+        <Box sx={{ typography: 'body2', color: 'text.secondary' }}>HOẶC</Box>
+      </Divider>
 
       <Form methods={methods} onSubmit={onSubmit}>
         {renderForm()}
