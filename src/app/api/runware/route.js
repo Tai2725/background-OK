@@ -71,18 +71,79 @@ export async function POST(request) {
 
     // Parse request body
     const body = await request.json();
+    console.log('📥 Received request body:', JSON.stringify(body, null, 2));
+
     const { operation, data, options = {} } = body;
+
+    // Validate required fields
+    if (!operation) {
+      console.error('❌ Missing operation in request body');
+      return NextResponse.json(
+        { error: 'Operation is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!data) {
+      console.error('❌ Missing data in request body');
+      return NextResponse.json(
+        { error: 'Data is required' },
+        { status: 400 }
+      );
+    }
+
+    console.log(`🔄 Processing operation: ${operation}`);
+    console.log(`📋 Data:`, JSON.stringify(data, null, 2));
+    console.log(`⚙️ Options:`, JSON.stringify(options, null, 2));
 
     let requestBody;
     const taskUUID = generateUUID();
+    console.log(`🆔 Generated taskUUID: ${taskUUID}`);
 
     // Build request based on operation type
     switch (operation) {
       case 'removeBackground':
+        // Validate required fields for removeBackground
+        if (!data.inputImage) {
+          console.error('❌ Missing inputImage for removeBackground operation');
+          return NextResponse.json(
+            { error: 'inputImage is required for removeBackground operation' },
+            { status: 400 }
+          );
+        }
+
+        // Validate inputImage format
+        const inputImage = data.inputImage.trim();
+        if (!inputImage) {
+          console.error('❌ Empty inputImage for removeBackground operation');
+          return NextResponse.json(
+            { error: 'inputImage cannot be empty' },
+            { status: 400 }
+          );
+        }
+
+        // Check if inputImage is a valid URL or base64
+        const isValidUrl = /^https?:\/\/.+/.test(inputImage);
+        const isValidBase64 = /^data:image\/[a-zA-Z]+;base64,/.test(inputImage) || /^[A-Za-z0-9+/]+=*$/.test(inputImage);
+
+        if (!isValidUrl && !isValidBase64) {
+          console.error('❌ Invalid inputImage format:', inputImage.substring(0, 100) + '...');
+          return NextResponse.json(
+            { error: 'inputImage must be a valid URL or base64 string' },
+            { status: 400 }
+          );
+        }
+
+        console.log(`🖼️ Input image: ${inputImage.substring(0, 100)}${inputImage.length > 100 ? '...' : ''}`);
+        console.log(`🎯 Model: ${options.model || 'runware:109@1'}`);
+        console.log(`📏 Input image length: ${inputImage.length}`);
+        console.log(`🔗 Is URL: ${isValidUrl}`);
+        console.log(`📊 Is Base64: ${isValidBase64}`);
+
         const removeBackgroundTask = {
           taskType: 'imageBackgroundRemoval',
           taskUUID,
-          inputImage: data.inputImage,
+          inputImage,
           model: options.model || 'runware:109@1', // Default to runware:109@1 for mask generation
           outputFormat: options.outputFormat || 'PNG',
           outputType: options.outputType || 'URL',
@@ -93,9 +154,11 @@ export async function POST(request) {
         // Add settings object if provided (only supported by runware:109@1)
         if (options.settings && options.model === 'runware:109@1') {
           removeBackgroundTask.settings = options.settings;
+          console.log(`⚙️ Added settings for runware:109@1:`, JSON.stringify(options.settings, null, 2));
         }
 
         requestBody = [removeBackgroundTask];
+        console.log(`📤 Built removeBackground request:`, JSON.stringify(requestBody, null, 2));
         break;
 
       case 'upscale':
@@ -150,58 +213,139 @@ export async function POST(request) {
         );
     }
 
-    // Make request to Runware API
-    const response = await fetch(`${RUNWARE_API_URL}/v1`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${RUNWARE_API_KEY}`,
-      },
-      body: JSON.stringify(requestBody),
-    });
+    // Make request to Runware API with retry logic
+    let result;
+    let attempts = 0;
+    const maxAttempts = 3;
+    const retryDelay = 2000; // 2 seconds
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return NextResponse.json(
-        {
-          error: errorData.message || `Runware API error: ${response.status}`,
-          details: errorData
-        },
-        { status: response.status }
-      );
-    }
+    while (attempts < maxAttempts) {
+      attempts++;
 
-    const result = await response.json();
+      try {
+        console.log(`Runware API attempt ${attempts}/${maxAttempts} for operation: ${operation}`);
 
-    // Debug log để kiểm tra response từ Runware
-    console.log('Runware API response:', JSON.stringify(result, null, 2));
+        const response = await fetch(`${RUNWARE_API_URL}/v1`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${RUNWARE_API_KEY}`,
+          },
+          body: JSON.stringify(requestBody),
+        });
 
-    if (!result.data || result.data.length === 0) {
-      return NextResponse.json(
-        { error: 'Không nhận được kết quả từ Runware API' },
-        { status: 500 }
-      );
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+
+          // If it's a server error (5xx) and we have attempts left, retry
+          if (response.status >= 500 && attempts < maxAttempts) {
+            console.log(`Server error ${response.status}, retrying in ${retryDelay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            continue;
+          }
+
+          return NextResponse.json(
+            {
+              error: errorData.message || `Runware API error: ${response.status}`,
+              details: errorData
+            },
+            { status: response.status }
+          );
+        }
+
+        result = await response.json();
+
+        // Debug log để kiểm tra response từ Runware
+        console.log('Runware API response:', JSON.stringify(result, null, 2));
+
+        // Check if result has data
+        if (!result.data || !Array.isArray(result.data)) {
+          throw new Error('Invalid response format from Runware API');
+        }
+
+        // If data is empty and we have attempts left, retry
+        if (result.data.length === 0 && attempts < maxAttempts) {
+          console.log(`Empty data response, retrying in ${retryDelay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          continue;
+        }
+
+        // If we still have empty data after all attempts
+        if (result.data.length === 0) {
+          return NextResponse.json(
+            { error: 'Runware API trả về dữ liệu rỗng sau nhiều lần thử' },
+            { status: 500 }
+          );
+        }
+
+        // Success - break out of retry loop
+        break;
+
+      } catch (fetchError) {
+        console.error(`Runware API fetch error (attempt ${attempts}):`, fetchError);
+
+        // If it's the last attempt, throw the error
+        if (attempts === maxAttempts) {
+          return NextResponse.json(
+            { error: 'Không thể kết nối đến Runware API sau nhiều lần thử' },
+            { status: 500 }
+          );
+        }
+
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
     }
 
     const taskResult = result.data[0];
 
+    // Validate task result
+    if (!taskResult) {
+      return NextResponse.json(
+        { error: 'Không có kết quả task từ Runware API' },
+        { status: 500 }
+      );
+    }
+
     // Debug log để kiểm tra task result
     console.log('Task result:', JSON.stringify(taskResult, null, 2));
+
+    // Validate required fields based on operation
+    const requiredFields = ['taskUUID', 'imageUUID'];
+    const missingFields = requiredFields.filter(field => !taskResult[field]);
+
+    if (missingFields.length > 0) {
+      return NextResponse.json(
+        { error: `Thiếu các trường bắt buộc trong response: ${missingFields.join(', ')}` },
+        { status: 500 }
+      );
+    }
 
     // Log usage for billing/monitoring
     console.log(`Runware API usage - User: ${authResult.user.id}, Operation: ${operation}, Cost: ${taskResult.cost || 0}`);
 
+    // Normalize response data - ensure consistent field names
+    const responseData = {
+      taskUUID: taskResult.taskUUID,
+      imageUUID: taskResult.imageUUID,
+      imageURL: taskResult.imageURL || null,
+      imageBase64Data: taskResult.imageBase64Data || null,
+      imageDataURI: taskResult.imageDataURI || null,
+      cost: taskResult.cost || 0,
+      operation,
+    };
+
+    // Validate that we have at least one output format
+    if (!responseData.imageURL && !responseData.imageBase64Data && !responseData.imageDataURI) {
+      return NextResponse.json(
+        { error: 'Không có URL hoặc dữ liệu hình ảnh trong response từ Runware API' },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      data: {
-        taskUUID: taskResult.taskUUID,
-        imageUUID: taskResult.imageUUID,
-        imageURL: taskResult.imageURL,
-        imageBase64Data: taskResult.imageBase64Data,
-        imageDataURI: taskResult.imageDataURI,
-        cost: taskResult.cost,
-        operation,
-      },
+      data: responseData,
     });
 
   } catch (error) {

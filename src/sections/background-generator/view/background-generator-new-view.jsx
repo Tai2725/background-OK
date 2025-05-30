@@ -4,7 +4,6 @@ import { useState, useCallback } from 'react';
 
 import {
   Container,
-  Grid,
 } from '@mui/material';
 
 import { paths } from 'src/routes/paths';
@@ -17,7 +16,7 @@ import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
 import { ImageUploadService } from 'src/lib/image-upload-service';
 import { RunwareService } from 'src/lib/runware-service';
 
-import { StepWorkflow } from '../components/step-workflow';
+import { ModernWorkflow } from '../components/modern-workflow';
 
 // ----------------------------------------------------------------------
 
@@ -72,10 +71,7 @@ export function BackgroundGeneratorNewView() {
       setUploadedImageUrl(uploadResult.data.url);
       setImageRecordId(uploadResult.data.id);
 
-      // Move to next step
-      setCurrentStep(1);
-
-      toast.success('Upload hình ảnh thành công!');
+      toast.success('Upload hình ảnh thành công! Bấm "Tiếp Theo" để xóa background.');
     } catch (error) {
       console.error('Upload error:', error);
       setUploadError(error.message);
@@ -87,16 +83,26 @@ export function BackgroundGeneratorNewView() {
 
   // Handle remove background
   const handleRemoveBackground = useCallback(async () => {
+    console.log('🎯 handleRemoveBackground called');
+    console.log('📷 uploadedImageUrl:', uploadedImageUrl);
+    console.log('🆔 imageRecordId:', imageRecordId);
+
     if (!uploadedImageUrl) {
+      console.error('❌ No uploaded image URL');
       throw new Error('Không có hình ảnh để xử lý');
     }
 
     setIsRemovingBg(true);
     setRemoveBgError(null);
+    console.log('⏳ Remove background processing started');
 
     try {
+      console.log('🚀 Calling RunwareService.removeBackground...');
+
       // Call Runware API to remove background
       const removeResult = await RunwareService.removeBackground(uploadedImageUrl);
+
+      console.log('✅ RunwareService.removeBackground completed:', removeResult);
 
       if (!removeResult.success) {
         throw new Error(removeResult.error);
@@ -114,13 +120,10 @@ export function BackgroundGeneratorNewView() {
       console.log('Remove background result:', removeResult);
       console.log('Image URL from response:', removeResult.data.imageURL);
 
-      // Update state
+      // Update state - use imageURL for consistency
       setRemovedBgImageUrl(removeResult.data.imageURL);
 
-      // Move to next step
-      setCurrentStep(2);
-
-      toast.success('Xóa background thành công!');
+      toast.success('Xóa background thành công! Bấm "Tiếp Theo" để chọn style.');
     } catch (error) {
       console.error('Remove background error:', error);
       setRemoveBgError(error.message);
@@ -133,20 +136,15 @@ export function BackgroundGeneratorNewView() {
   // Handle style selection
   const handleStyleSelect = useCallback((style) => {
     setSelectedStyle(style);
-
-    // Auto move to next step when style is selected
-    setCurrentStep(3);
+    toast.success('Đã chọn style! Bấm "Tiếp Theo" để tạo background.');
   }, []);
 
   // Handle custom prompt change
   const handleCustomPromptChange = useCallback((prompt) => {
     setCustomPrompt(prompt);
-
-    // Auto move to next step when prompt is entered
-    if (prompt.trim() && currentStep === 2) {
-      setCurrentStep(3);
-    }
-  }, [currentStep]);
+    // Không hiển thị toast liên tục để tránh spam thông báo
+    // Toast sẽ được hiển thị khi user bấm "Tiếp Theo"
+  }, []);
 
   // Handle generate background
   const handleGenerateBackground = useCallback(async () => {
@@ -235,6 +233,85 @@ export function BackgroundGeneratorNewView() {
     toast.info('Đã reset workflow');
   }, []);
 
+  // Navigation handlers
+  const handleNextStep = useCallback(() => {
+    const nextStep = currentStep + 1;
+    const maxStep = 3; // 0-3 (4 steps total)
+
+    if (nextStep <= maxStep) {
+      // Validate current step before proceeding
+      let canProceed = false;
+
+      switch (currentStep) {
+        case 0: // Upload step
+          canProceed = Boolean(uploadedImageUrl);
+          if (!canProceed) {
+            toast.error('Vui lòng upload hình ảnh trước khi tiếp tục');
+          }
+          break;
+        case 1: // Remove background step
+          canProceed = Boolean(removedBgImageUrl);
+          if (!canProceed) {
+            toast.error('Vui lòng xóa background trước khi tiếp tục');
+          }
+          break;
+        case 2: // Choose prompt step
+          canProceed = Boolean(selectedStyle || customPrompt?.trim());
+          if (!canProceed) {
+            toast.error('Vui lòng chọn style hoặc nhập prompt trước khi tiếp tục');
+          }
+          break;
+        case 3: // Generate background step
+          canProceed = Boolean(finalImageUrl);
+          if (!canProceed) {
+            toast.error('Vui lòng tạo background trước khi hoàn thành');
+          }
+          break;
+        default:
+          canProceed = true;
+      }
+
+      if (canProceed) {
+        setCurrentStep(nextStep);
+        toast.success(`Chuyển đến bước ${nextStep + 1}`);
+      }
+    }
+  }, [currentStep, uploadedImageUrl, removedBgImageUrl, selectedStyle, customPrompt, finalImageUrl]);
+
+  const handlePreviousStep = useCallback(() => {
+    const prevStep = currentStep - 1;
+
+    if (prevStep >= 0) {
+      setCurrentStep(prevStep);
+      toast.info(`Quay lại bước ${prevStep + 1}`);
+    }
+  }, [currentStep]);
+
+  const handleGoToStep = useCallback((stepIndex) => {
+    // Validate if user can go to this step
+    let canGoToStep = true;
+    let errorMessage = '';
+
+    // Check if previous steps are completed
+    if (stepIndex > 0 && !uploadedImageUrl) {
+      canGoToStep = false;
+      errorMessage = 'Vui lòng upload hình ảnh trước';
+    } else if (stepIndex > 1 && !removedBgImageUrl) {
+      canGoToStep = false;
+      errorMessage = 'Vui lòng xóa background trước';
+    } else if (stepIndex > 2 && !selectedStyle && !customPrompt?.trim()) {
+      canGoToStep = false;
+      errorMessage = 'Vui lòng chọn style hoặc nhập prompt trước';
+    }
+
+    if (canGoToStep) {
+      setCurrentStep(stepIndex);
+      toast.success(`Chuyển đến bước ${stepIndex + 1}`);
+    } else {
+      toast.error(errorMessage);
+    }
+  }, [uploadedImageUrl, removedBgImageUrl, selectedStyle, customPrompt]);
+
   return (
     <Container maxWidth="xl">
       <CustomBreadcrumbs
@@ -246,38 +323,39 @@ export function BackgroundGeneratorNewView() {
         sx={{ mb: { xs: 3, md: 5 } }}
       />
 
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <StepWorkflow
-            // Handlers
-            onUploadImage={handleUploadImage}
-            onRemoveBackground={handleRemoveBackground}
-            onStyleSelect={handleStyleSelect}
-            onCustomPromptChange={handleCustomPromptChange}
-            onGenerateBackground={handleGenerateBackground}
-            onReset={handleReset}
+      <ModernWorkflow
+        // Handlers
+        onUploadImage={handleUploadImage}
+        onRemoveBackground={handleRemoveBackground}
+        onStyleSelect={handleStyleSelect}
+        onCustomPromptChange={handleCustomPromptChange}
+        onGenerateBackground={handleGenerateBackground}
+        onReset={handleReset}
 
-            // State
-            currentStep={currentStep}
-            uploadedImage={uploadedImage}
-            uploadedImageUrl={uploadedImageUrl}
-            removedBgImageUrl={removedBgImageUrl}
-            finalImage={finalImageUrl}
-            selectedStyle={selectedStyle}
-            customPrompt={customPrompt}
+        // Navigation handlers
+        onNextStep={handleNextStep}
+        onPreviousStep={handlePreviousStep}
+        onGoToStep={handleGoToStep}
 
-            // Loading states
-            isUploading={isUploading}
-            isRemovingBg={isRemovingBg}
-            isGenerating={isGenerating}
+        // State
+        currentStep={currentStep}
+        uploadedImage={uploadedImage}
+        uploadedImageUrl={uploadedImageUrl}
+        removedBgImageUrl={removedBgImageUrl}
+        finalImage={finalImageUrl}
+        selectedStyle={selectedStyle}
+        customPrompt={customPrompt}
 
-            // Error states
-            uploadError={uploadError}
-            removeBgError={removeBgError}
-            generateError={generateError}
-          />
-        </Grid>
-      </Grid>
+        // Loading states
+        isUploading={isUploading}
+        isRemovingBg={isRemovingBg}
+        isGenerating={isGenerating}
+
+        // Error states
+        uploadError={uploadError}
+        removeBgError={removeBgError}
+        generateError={generateError}
+      />
     </Container>
   );
 }

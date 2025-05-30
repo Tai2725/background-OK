@@ -217,7 +217,7 @@ export function ImageProcessor() {
 
       <Grid container spacing={4}>
         {/* Left Panel - Controls */}
-        <Grid item xs={12} md={6}>
+        <Grid item size={{ xs: 12, md: 6 }}>
           {/* Operation Selection */}
           <Card sx={{ p: 3, mb: 3 }}>
             <Typography variant="h6" sx={{ mb: 2 }}>
@@ -345,7 +345,7 @@ export function ImageProcessor() {
         </Grid>
 
         {/* Right Panel - Status & Results */}
-        <Grid item xs={12} md={6}>
+        <Grid item size={{ xs: 12, md: 6 }}>
           {/* Processing Status */}
           <ProcessingStatus
             tasks={tasks}

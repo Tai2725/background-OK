@@ -32,26 +32,32 @@ export const backgroundGeneratorNavData = [
   {
     subheader: 'Tạo Background',
     items: [
-      { 
-        title: 'Dashboard', 
-        path: paths.backgroundGenerator.dashboard, 
+      {
+        title: 'Dashboard',
+        path: paths.backgroundGenerator.dashboard,
         icon: ICONS.dashboard,
         caption: 'Tổng quan và thống kê'
       },
-      { 
-        title: 'Generator', 
-        path: paths.backgroundGenerator.generator, 
+      {
+        title: 'Generator',
+        path: paths.backgroundGenerator.generator,
         icon: ICONS.generator,
         caption: 'Tạo background cho sản phẩm',
+      },
+      {
+        title: 'Generator V2',
+        path: paths.backgroundGenerator.generatorV2,
+        icon: ICONS.generator,
+        caption: 'Tạo background tối ưu - Single page',
         info: (
-          <Label color="primary" variant="inverted">
-            NEW
+          <Label color="success" variant="inverted">
+            V2
           </Label>
         ),
       },
-      { 
-        title: 'Gallery', 
-        path: paths.backgroundGenerator.gallery, 
+      {
+        title: 'Gallery',
+        path: paths.backgroundGenerator.gallery,
         icon: ICONS.gallery,
         caption: 'Thư viện hình ảnh đã xử lý'
       },
@@ -63,9 +69,9 @@ export const backgroundGeneratorNavData = [
   {
     subheader: 'Quản lý',
     items: [
-      { 
-        title: 'Settings', 
-        path: paths.backgroundGenerator.settings, 
+      {
+        title: 'Settings',
+        path: paths.backgroundGenerator.settings,
         icon: ICONS.settings,
         caption: 'Cài đặt tài khoản và API'
       },

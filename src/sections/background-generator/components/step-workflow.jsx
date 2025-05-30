@@ -17,10 +17,12 @@ import {
   IconButton,
   Tooltip,
   TextField,
+  Stack,
 } from '@mui/material';
 
 import { toast } from 'src/components/snackbar';
 import { Iconify } from 'src/components/iconify';
+import { DebugLogger } from 'src/utils/debug-logger';
 
 import { ImageUploadZone } from './image-upload-zone';
 import { BackgroundStyleSelector } from './background-style-selector';
@@ -64,6 +66,10 @@ export function StepWorkflow({
   onCustomPromptChange,
   onGenerateBackground,
   onReset,
+  // Navigation handlers
+  onNextStep,
+  onPreviousStep,
+  onGoToStep,
   // State
   currentStep = 0,
   uploadedImage = null,
@@ -84,6 +90,37 @@ export function StepWorkflow({
   const [showUploadError, setShowUploadError] = useState(false);
   const [showRemoveBgError, setShowRemoveBgError] = useState(false);
   const [showGenerateError, setShowGenerateError] = useState(false);
+
+  // Helper functions to check step completion
+  const isStepCompleted = useCallback((stepIndex) => {
+    switch (stepIndex) {
+      case 0: // Upload
+        return Boolean(uploadedImageUrl);
+      case 1: // Remove Background
+        return Boolean(removedBgImageUrl);
+      case 2: // Choose Prompt
+        return Boolean(selectedStyle || customPrompt?.trim());
+      case 3: // Generate Background
+        return Boolean(finalImage);
+      default:
+        return false;
+    }
+  }, [uploadedImageUrl, removedBgImageUrl, selectedStyle, customPrompt, finalImage]);
+
+  const canProceedToStep = useCallback((stepIndex) => {
+    // Can always go to step 0
+    if (stepIndex === 0) return true;
+
+    // For other steps, check if previous steps are completed
+    for (let i = 0; i < stepIndex; i++) {
+      if (!isStepCompleted(i)) return false;
+    }
+    return true;
+  }, [isStepCompleted]);
+
+  const isCurrentStepCompleted = isStepCompleted(currentStep);
+  const canGoNext = currentStep < WORKFLOW_STEPS.length - 1 && isCurrentStepCompleted;
+  const canGoPrevious = currentStep > 0;
 
   // Handle file upload
   const handleFileUpload = useCallback(async (file) => {
@@ -136,47 +173,183 @@ export function StepWorkflow({
     }
   }, [handleRemoveBackground, handleGenerateBackground]);
 
+  // Navigation Controls Component
+  const NavigationControls = () => {
+    const handlePrevious = () => {
+      DebugLogger.navigation.previousStep(currentStep, currentStep - 1);
+      if (onPreviousStep) {
+        onPreviousStep();
+      } else {
+        DebugLogger.warn('onPreviousStep handler not provided');
+      }
+    };
+
+    const handleNext = () => {
+      DebugLogger.navigation.nextStep(currentStep, currentStep + 1, canGoNext);
+      DebugLogger.info('Step completion status', { isCurrentStepCompleted, canGoNext });
+      if (onNextStep) {
+        onNextStep();
+      } else {
+        DebugLogger.warn('onNextStep handler not provided');
+      }
+    };
+
+    return (
+      <Card sx={{ mt: 3 }}>
+        <CardContent>
+          <Stack direction="row" spacing={2} justifyContent="space-between" alignItems="center">
+            <Button
+              variant="outlined"
+              startIcon={<Iconify icon="solar:arrow-left-bold" />}
+              onClick={handlePrevious}
+              disabled={!canGoPrevious || isUploading || isRemovingBg || isGenerating}
+            >
+              Quay Lại
+            </Button>
+
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                Bước {currentStep + 1} / {WORKFLOW_STEPS.length}
+              </Typography>
+              {isCurrentStepCompleted && (
+                <Chip
+                  size="small"
+                  label="Hoàn thành"
+                  color="success"
+                  icon={<Iconify icon="solar:check-circle-bold" width={16} />}
+                />
+              )}
+            </Box>
+
+            <Button
+              variant="contained"
+              endIcon={<Iconify icon="solar:arrow-right-bold" />}
+              onClick={() => {
+                // Xử lý đặc biệt cho bước chọn prompt
+                if (currentStep === 2 && (selectedStyle || customPrompt?.trim())) {
+                  toast.success('Đã cập nhật prompt và chuyển đến bước tiếp theo');
+                }
+                handleNext();
+              }}
+              disabled={!canGoNext || isUploading || isRemovingBg || isGenerating}
+            >
+              {currentStep === 2 ? 'Xác Nhận Prompt & Tiếp Theo' :
+               currentStep === WORKFLOW_STEPS.length - 1 ? 'Hoàn Thành' : 'Tiếp Theo'}
+            </Button>
+          </Stack>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // Unified Step Layout Component
+  const StepLayout = ({ step, children, isActive = false }) => (
+    <Card sx={{ mb: 3, border: isActive ? 2 : 1, borderColor: isActive ? 'primary.main' : 'divider' }}>
+      <CardContent>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+          <Box
+            sx={{
+              width: 40,
+              height: 40,
+              borderRadius: '50%',
+              bgcolor: isActive ? 'primary.main' : 'grey.300',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              mr: 2,
+            }}
+          >
+            <Iconify
+              icon={step.icon}
+              width={20}
+              sx={{ color: isActive ? 'white' : 'grey.600' }}
+            />
+          </Box>
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h6" sx={{ color: isActive ? 'primary.main' : 'text.primary' }}>
+              {step.label}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {step.description}
+            </Typography>
+          </Box>
+          {isStepCompleted(WORKFLOW_STEPS.findIndex(s => s.id === step.id)) && (
+            <Chip
+              size="small"
+              label="Hoàn thành"
+              color="success"
+              icon={<Iconify icon="solar:check-circle-bold" width={16} />}
+            />
+          )}
+        </Box>
+        {children}
+      </CardContent>
+    </Card>
+  );
+
   return (
     <Box>
       {/* Progress Stepper */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Stepper activeStep={currentStep} alternativeLabel>
-            {WORKFLOW_STEPS.map((step, index) => (
-              <Step key={step.id}>
-                <StepLabel
-                  error={
-                    (index === 0 && uploadError) ||
-                    (index === 1 && removeBgError) ||
-                    (index === 3 && generateError)
-                  }
-                >
-                  {step.label}
-                </StepLabel>
-              </Step>
-            ))}
+            {WORKFLOW_STEPS.map((step, index) => {
+              const isCompleted = isStepCompleted(index);
+              const hasError =
+                (index === 0 && uploadError) ||
+                (index === 1 && removeBgError) ||
+                (index === 3 && generateError);
+              const isClickable = canProceedToStep(index);
+
+              return (
+                <Step key={step.id} completed={isCompleted}>
+                  <StepLabel
+                    error={hasError}
+                    onClick={() => {
+                      DebugLogger.navigation.stepClick(index, step.label, isClickable);
+                      if (isClickable && onGoToStep) {
+                        DebugLogger.info('Navigating to step', { from: currentStep, to: index });
+                        onGoToStep(index);
+                      } else {
+                        DebugLogger.warn('Cannot navigate to step', {
+                          isClickable,
+                          hasHandler: !!onGoToStep,
+                          canProceed: canProceedToStep(index)
+                        });
+                      }
+                    }}
+                    sx={{
+                      cursor: isClickable ? 'pointer' : 'default',
+                      '& .MuiStepLabel-label': {
+                        color: isClickable ? 'primary.main' : 'text.disabled',
+                        '&:hover': {
+                          color: isClickable ? 'primary.dark' : 'text.disabled',
+                        },
+                      },
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Iconify icon={step.icon} width={20} />
+                      <Typography variant="subtitle2">{step.label}</Typography>
+                      {isCompleted && (
+                        <Iconify icon="solar:check-circle-bold" width={16} color="success.main" />
+                      )}
+                    </Box>
+                  </StepLabel>
+                </Step>
+              );
+            })}
           </Stepper>
         </CardContent>
       </Card>
 
       {/* Step 1: Upload Image */}
       {currentStep === 0 && (
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-              <Iconify icon="solar:upload-bold" sx={{ mr: 2, color: 'primary.main' }} />
-              <Box>
-                <Typography variant="h6">Upload Hình Ảnh</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Tải lên hình ảnh sản phẩm của bạn để bắt đầu
-                </Typography>
-              </Box>
-            </Box>
-
-            <ImageUploadZone
-              onUpload={handleFileUpload}
-              disabled={isUploading}
-            />
+        <StepLayout step={WORKFLOW_STEPS[0]} isActive={true}>
+          <ImageUploadZone
+            onUpload={handleFileUpload}
+            disabled={isUploading}
+          />
 
             {/* Upload Success - Show Supabase URL */}
             {uploadedImageUrl && (
@@ -245,35 +418,23 @@ export function StepWorkflow({
                 {uploadError || 'Có lỗi xảy ra khi upload hình ảnh'}
               </Alert>
             </Collapse>
-          </CardContent>
-        </Card>
+        </StepLayout>
       )}
 
       {/* Step 2: Remove Background */}
       {currentStep === 1 && (
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-              <Iconify icon="solar:eraser-bold" sx={{ mr: 2, color: 'warning.main' }} />
-              <Box>
-                <Typography variant="h6">Xóa Background</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  AI sẽ tự động xóa background khỏi hình ảnh của bạn
-                </Typography>
-              </Box>
-            </Box>
-
-            <Button
-              variant="contained"
-              size="large"
-              fullWidth
-              onClick={handleRemoveBackground}
-              disabled={isRemovingBg}
-              startIcon={<Iconify icon="solar:eraser-bold" />}
-              sx={{ mb: 2 }}
-            >
-              {isRemovingBg ? 'Đang xóa background...' : 'Xóa Background'}
-            </Button>
+        <StepLayout step={WORKFLOW_STEPS[1]} isActive={true}>
+          <Button
+            variant="contained"
+            size="large"
+            fullWidth
+            onClick={handleRemoveBackground}
+            disabled={isRemovingBg}
+            startIcon={<Iconify icon="solar:eraser-bold" />}
+            sx={{ mb: 2 }}
+          >
+            {isRemovingBg ? 'Đang xóa background...' : 'Xóa Background'}
+          </Button>
 
             {/* Remove Background Error */}
             <Collapse in={showRemoveBgError || Boolean(removeBgError)}>
@@ -293,116 +454,39 @@ export function StepWorkflow({
                 {removeBgError || 'Có lỗi xảy ra khi xóa background'}
               </Alert>
             </Collapse>
-          </CardContent>
-        </Card>
+        </StepLayout>
       )}
 
       {/* Step 3: Choose Prompt */}
       {currentStep === 2 && (
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-              <Iconify icon="solar:palette-bold" sx={{ mr: 2, color: 'info.main' }} />
-              <Box>
-                <Typography variant="h6">Chọn Style Background</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Chọn style có sẵn hoặc nhập prompt tùy chỉnh
-                </Typography>
-              </Box>
-            </Box>
+        <StepLayout step={WORKFLOW_STEPS[2]} isActive={true}>
+          <BackgroundStyleSelector
+            selectedStyle={selectedStyle}
+            onStyleSelect={onStyleSelect}
+            customPrompt={customPrompt}
+            onCustomPromptChange={onCustomPromptChange}
+          />
 
-            <BackgroundStyleSelector
-              selectedStyle={selectedStyle}
-              onStyleSelect={onStyleSelect}
-              customPrompt={customPrompt}
-              onCustomPromptChange={onCustomPromptChange}
-            />
-
-            {/* Selected Prompt Editor */}
-            {(selectedStyle || customPrompt) && (
-              <Card sx={{ mt: 3, bgcolor: 'grey.50' }}>
-                <CardContent>
-                  <Typography variant="subtitle2" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Iconify icon="solar:edit-bold" width={20} />
-                    Chỉnh Sửa Prompt
-                  </Typography>
-
-                  <TextField
-                    fullWidth
-                    multiline
-                    rows={3}
-                    value={customPrompt || selectedStyle?.prompt || ''}
-                    onChange={(e) => onCustomPromptChange?.(e.target.value)}
-                    placeholder="Chỉnh sửa prompt để tùy chỉnh background theo ý muốn..."
-                    helperText="Bạn có thể chỉnh sửa prompt để tạo ra background phù hợp hơn với nhu cầu"
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        bgcolor: 'background.paper',
-                      },
-                    }}
-                  />
-
-                  <Box sx={{ mt: 2, display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={() => {
-                        if (selectedStyle) {
-                          onCustomPromptChange?.(selectedStyle.prompt);
-                        }
-                      }}
-                      disabled={!selectedStyle}
-                    >
-                      Reset về gốc
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="contained"
-                      onClick={() => {
-                        // Move to next step when prompt is ready
-                        if (customPrompt?.trim() || selectedStyle?.prompt) {
-                          // This will be handled by parent component
-                        }
-                      }}
-                      disabled={!customPrompt?.trim() && !selectedStyle?.prompt}
-                    >
-                      Xác Nhận Prompt
-                    </Button>
-                  </Box>
-                </CardContent>
-              </Card>
-            )}
-          </CardContent>
-        </Card>
+            {/* Selected Prompt Editor - Now integrated into BackgroundStyleSelector */}
+        </StepLayout>
       )}
 
       {/* Step 4: Generate Background */}
       {currentStep === 3 && (
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-              <Iconify icon="solar:magic-stick-3-bold" sx={{ mr: 2, color: 'success.main' }} />
-              <Box>
-                <Typography variant="h6">Tạo Background</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  AI sẽ tạo background mới dựa trên style bạn đã chọn
-                </Typography>
-              </Box>
-            </Box>
-
-            {!finalImage && (
-              <Button
-                variant="contained"
-                size="large"
-                fullWidth
-                onClick={handleGenerateBackground}
-                disabled={isGenerating || (!selectedStyle && !customPrompt)}
-                startIcon={<Iconify icon="solar:magic-stick-3-bold" />}
-                sx={{ mb: 2 }}
-              >
-                {isGenerating ? 'Đang tạo background...' : 'Tạo Background'}
-              </Button>
-            )}
+        <StepLayout step={WORKFLOW_STEPS[3]} isActive={true}>
+          {!finalImage && (
+            <Button
+              variant="contained"
+              size="large"
+              fullWidth
+              onClick={handleGenerateBackground}
+              disabled={isGenerating || (!selectedStyle && !customPrompt)}
+              startIcon={<Iconify icon="solar:magic-stick-3-bold" />}
+              sx={{ mb: 2 }}
+            >
+              {isGenerating ? 'Đang tạo background...' : 'Tạo Background'}
+            </Button>
+          )}
 
             {finalImage && (
               <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
@@ -452,16 +536,21 @@ export function StepWorkflow({
                 {generateError || 'Có lỗi xảy ra khi tạo background'}
               </Alert>
             </Collapse>
-          </CardContent>
-        </Card>
+        </StepLayout>
       )}
 
-      {/* Preview Card */}
-      <Card>
+      {/* Navigation Controls */}
+      <NavigationControls />
+
+      {/* Unified Preview Card - Always Visible */}
+      <Card sx={{ mt: 3, position: 'sticky', top: 20 }}>
         <CardContent>
-          <Typography variant="h6" sx={{ mb: 3 }}>
-            Preview
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+            <Iconify icon="solar:gallery-bold" sx={{ mr: 2, color: 'info.main' }} />
+            <Typography variant="h6">
+              Preview - Bước {currentStep + 1}: {WORKFLOW_STEPS[currentStep].label}
+            </Typography>
+          </Box>
 
           <ImagePreviewCard
             originalImage={uploadedImage}
@@ -475,6 +564,16 @@ export function StepWorkflow({
               null
             }
           />
+
+          {/* Step-specific preview info */}
+          <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              {currentStep === 0 && 'Upload hình ảnh để bắt đầu quá trình xử lý'}
+              {currentStep === 1 && 'Xem kết quả sau khi xóa background'}
+              {currentStep === 2 && 'Chọn style để preview background mới'}
+              {currentStep === 3 && 'Kết quả cuối cùng với background mới'}
+            </Typography>
+          </Box>
         </CardContent>
       </Card>
     </Box>

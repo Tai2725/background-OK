@@ -34,13 +34,16 @@ import { BackgroundStyleSelector } from '../components/background-style-selector
 import { ProcessingStatus } from '../components/processing-status';
 import { StepProgressIndicator } from '../components/step-progress-indicator';
 import { ErrorRetryCard } from '../components/error-retry-card';
+import { StepWorkflow } from '../components/step-workflow';
+import { DebugLogger } from 'src/utils/debug-logger';
 
 // ----------------------------------------------------------------------
 
 const STEPS = [
   'Upload Hình Ảnh',
+  'Xóa Background',
   'Chọn Style Background',
-  'Xử Lý & Kết Quả',
+  'Tạo Background',
 ];
 
 // ----------------------------------------------------------------------
@@ -138,7 +141,7 @@ export function BackgroundGeneratorGeneratorView() {
 
       setOriginalImage(file);
       setOriginalImageUrl(uploadResult.data.url);
-      setActiveStep(1);
+      // Don't auto-advance step - let user click Next
       setCurrentProcessingStep(null);
       setProcessingProgress(0);
 
@@ -160,7 +163,7 @@ export function BackgroundGeneratorGeneratorView() {
     SessionManager.updateResults({ selectedStyle: style });
     SessionManager.updateStepStatus(PROCESSING_STEPS.STYLE_SELECTION, STEP_STATUS.COMPLETED, { style });
 
-    setActiveStep(2);
+    // Don't auto-advance step - let user click Next
   }, []);
 
   // Handle custom prompt change
@@ -312,6 +315,121 @@ export function BackgroundGeneratorGeneratorView() {
     }
   }, [finalImageUrl]);
 
+  // Navigation handlers
+  const handleNextStep = useCallback(() => {
+    DebugLogger.navigation.nextStep(activeStep, activeStep + 1, activeStep < STEPS.length - 1);
+    if (activeStep < STEPS.length - 1) {
+      const newStep = activeStep + 1;
+      DebugLogger.info('Moving to next step', { from: activeStep, to: newStep });
+      setActiveStep(newStep);
+    } else {
+      DebugLogger.warn('Already at last step', { activeStep, maxSteps: STEPS.length });
+    }
+  }, [activeStep]);
+
+  const handlePreviousStep = useCallback(() => {
+    DebugLogger.navigation.previousStep(activeStep, activeStep - 1);
+    if (activeStep > 0) {
+      const newStep = activeStep - 1;
+      DebugLogger.info('Moving to previous step', { from: activeStep, to: newStep });
+      setActiveStep(newStep);
+    } else {
+      DebugLogger.warn('Already at first step', { activeStep });
+    }
+  }, [activeStep]);
+
+  const handleGoToStep = useCallback((stepIndex) => {
+    DebugLogger.navigation.stepClick(stepIndex, STEPS[stepIndex], true);
+    if (stepIndex >= 0 && stepIndex < STEPS.length) {
+      DebugLogger.info('Going to specific step', { from: activeStep, to: stepIndex });
+      setActiveStep(stepIndex);
+    } else {
+      DebugLogger.error('Invalid step index', { stepIndex, maxSteps: STEPS.length });
+    }
+  }, [activeStep]);
+
+  // Separate handlers for individual steps
+  const handleRemoveBackground = useCallback(async () => {
+    if (!originalImageUrl) {
+      toast.error('Vui lòng upload hình ảnh trước');
+      return;
+    }
+
+    try {
+      setError(null);
+      setCurrentProcessingStep('removing_bg');
+      setProcessingMessage('Đang xóa background...');
+      setProcessingProgress(30);
+
+      SessionManager.updateStepStatus(PROCESSING_STEPS.BACKGROUND_REMOVAL, STEP_STATUS.IN_PROGRESS);
+
+      const result = await BackgroundGeneratorService.removeBackgroundOnly(originalImage, user.id, ({ step, message, progress }) => {
+        setCurrentProcessingStep(step);
+        setProcessingMessage(message);
+        setProcessingProgress(progress);
+      });
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      setRemovedBgImageUrl(result.data.backgroundRemovedUrl);
+      SessionManager.updateStepStatus(PROCESSING_STEPS.BACKGROUND_REMOVAL, STEP_STATUS.COMPLETED);
+      SessionManager.updateResults({ backgroundRemovedUrl: result.data.backgroundRemovedUrl });
+
+      setCurrentProcessingStep(null);
+      setProcessingProgress(0);
+      toast.success('Xóa background thành công!');
+    } catch (error) {
+      console.error('Remove background error:', error);
+      SessionManager.updateStepStatus(PROCESSING_STEPS.BACKGROUND_REMOVAL, STEP_STATUS.ERROR, null, error.message);
+      setError(`Lỗi xóa background: ${error.message}`);
+      setCurrentProcessingStep(null);
+      toast.error(`Lỗi xóa background: ${error.message}`);
+    }
+  }, [originalImage, originalImageUrl, user]);
+
+  const handleGenerateBackground = useCallback(async () => {
+    if (!removedBgImageUrl || (!selectedStyle && !customPrompt)) {
+      toast.error('Vui lòng hoàn thành các bước trước');
+      return;
+    }
+
+    try {
+      setError(null);
+      setCurrentProcessingStep('generating_bg');
+      setProcessingMessage('Đang tạo background...');
+      setProcessingProgress(60);
+
+      SessionManager.updateStepStatus(PROCESSING_STEPS.BACKGROUND_GENERATION, STEP_STATUS.IN_PROGRESS);
+
+      const prompt = customPrompt || selectedStyle?.prompt || 'professional studio background, clean, minimalist';
+
+      const result = await BackgroundGeneratorService.generateBackground(removedBgImageUrl, {
+        prompt,
+        style: selectedStyle?.style || 'photographic',
+      });
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      setFinalImageUrl(result.data.finalUrl);
+      SessionManager.updateStepStatus(PROCESSING_STEPS.BACKGROUND_GENERATION, STEP_STATUS.COMPLETED);
+      SessionManager.updateResults({ finalImageUrl: result.data.finalUrl });
+
+      setCurrentProcessingStep(null);
+      setProcessingProgress(0);
+      toast.success('Tạo background thành công!');
+    } catch (error) {
+      console.error('Generate background error:', error);
+      SessionManager.updateStepStatus(PROCESSING_STEPS.BACKGROUND_GENERATION, STEP_STATUS.ERROR, null, error.message);
+      setError(`Lỗi tạo background: ${error.message}`);
+      setCurrentProcessingStep(null);
+      toast.error(`Lỗi tạo background: ${error.message}`);
+    }
+  }, [removedBgImageUrl, selectedStyle, customPrompt]);
+
   const isProcessing = currentProcessingStep !== null;
 
   return (
@@ -323,34 +441,6 @@ export function BackgroundGeneratorGeneratorView() {
           { name: 'Generator' },
         ]}
         sx={{ mb: { xs: 3, md: 5 } }}
-      />
-
-      {/* Stepper */}
-      <Card sx={{ mb: 5 }}>
-        <CardContent>
-          <Stepper activeStep={activeStep} alternativeLabel>
-            {STEPS.map((label) => (
-              <Step key={label}>
-                <StepLabel>{label}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
-        </CardContent>
-      </Card>
-
-      {/* Step Progress Indicator */}
-      <StepProgressIndicator
-        onRetryStep={handleRetryStep}
-        onResetSession={handleResetSession}
-        currentProcessingStep={currentProcessingStep}
-        processingProgress={processingProgress}
-      />
-
-      {/* Error Retry Card */}
-      <ErrorRetryCard
-        onRetryStep={handleRetryStep}
-        onResetAll={handleResetSession}
-        sx={{ mb: 3 }}
       />
 
       {/* Processing Status */}
@@ -379,142 +469,85 @@ export function BackgroundGeneratorGeneratorView() {
       )}
 
       <Grid container spacing={3}>
-        {/* Left Column - Controls */}
-        <Grid item size={{ xs: 12, lg: 6 }}>
-          {/* Step 1: Upload Image */}
-          {activeStep === 0 && (
-            <Card>
-              <CardContent>
-                <Typography variant="h6" sx={{ mb: 3 }}>
-                  Upload Hình Ảnh Sản Phẩm
-                </Typography>
-                <ImageUploadZone
-                  onUpload={handleImageUpload}
-                  disabled={isProcessing}
-                />
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Step 2: Select Style */}
-          {activeStep === 1 && (
-            <Card>
-              <CardContent>
-                <Typography variant="h6" sx={{ mb: 3 }}>
-                  Chọn Style Background
-                </Typography>
-                <BackgroundStyleSelector
-                  selectedStyle={selectedStyle}
-                  onStyleSelect={handleStyleSelect}
-                  customPrompt={customPrompt}
-                  onCustomPromptChange={handleCustomPromptChange}
-                  disabled={isProcessing}
-                />
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Step 3: Process & Results */}
-          {activeStep === 2 && (
-            <Card>
-              <CardContent>
-                <Typography variant="h6" sx={{ mb: 3 }}>
-                  Xử Lý & Kết Quả
-                </Typography>
-
-                {!isProcessing && !finalImageUrl && (
-                  <Button
-                    variant="contained"
-                    size="large"
-                    fullWidth
-                    onClick={handleProcessImage}
-                    startIcon={<Iconify icon="solar:magic-stick-3-bold" />}
-                    sx={{ mb: 2 }}
-                    disabled={!SessionManager.canExecuteStep(PROCESSING_STEPS.BACKGROUND_REMOVAL)}
-                  >
-                    Bắt Đầu Xử Lý
-                  </Button>
-                )}
-
-                {finalImageUrl && (
-                  <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                    <Button
-                      variant="contained"
-                      color="success"
-                      onClick={handleDownload}
-                      startIcon={<Iconify icon="solar:download-bold" />}
-                      sx={{ flex: 1 }}
-                    >
-                      Tải Xuống
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      onClick={handleReset}
-                      startIcon={<Iconify icon="solar:restart-bold" />}
-                      sx={{ flex: 1 }}
-                    >
-                      Tạo Mới
-                    </Button>
-                  </Box>
-                )}
-
-                <Button
-                  variant="text"
-                  onClick={() => setActiveStep(1)}
-                  startIcon={<Iconify icon="solar:arrow-left-bold" />}
-                  disabled={isProcessing}
-                >
-                  Quay Lại
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+        {/* Main Workflow */}
+        <Grid item size={{ xs: 12, lg: 8 }}>
+          <StepWorkflow
+            // Handlers
+            onUploadImage={handleImageUpload}
+            onRemoveBackground={handleRemoveBackground}
+            onStyleSelect={handleStyleSelect}
+            onCustomPromptChange={handleCustomPromptChange}
+            onGenerateBackground={handleGenerateBackground}
+            onReset={handleReset}
+            // Navigation handlers
+            onNextStep={handleNextStep}
+            onPreviousStep={handlePreviousStep}
+            onGoToStep={handleGoToStep}
+            // State
+            currentStep={activeStep}
+            uploadedImage={originalImage}
+            uploadedImageUrl={originalImageUrl}
+            removedBgImageUrl={removedBgImageUrl}
+            finalImage={finalImageUrl}
+            selectedStyle={selectedStyle}
+            customPrompt={customPrompt}
+            // Loading states
+            isUploading={currentProcessingStep === 'uploading'}
+            isRemovingBg={currentProcessingStep === 'removing_bg'}
+            isGenerating={currentProcessingStep === 'generating_bg'}
+            // Error states
+            uploadError={error && currentProcessingStep === 'uploading' ? error : null}
+            removeBgError={error && currentProcessingStep === 'removing_bg' ? error : null}
+            generateError={error && currentProcessingStep === 'generating_bg' ? error : null}
+          />
         </Grid>
 
-        {/* Right Column - Preview */}
-        <Grid item size={{ xs: 12, lg: 6 }}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 3 }}>
-                Preview
-              </Typography>
+        {/* Side Panel - Session Info & Quick Actions */}
+        <Grid item size={{ xs: 12, lg: 4 }}>
+          {/* Step Progress Indicator */}
+          <StepProgressIndicator
+            onRetryStep={handleRetryStep}
+            onResetSession={handleResetSession}
+            currentProcessingStep={currentProcessingStep}
+            processingProgress={processingProgress}
+          />
 
-              {originalImageUrl && (
-                <ImagePreviewCard
-                  originalImage={originalImageUrl}
-                  removedBgImage={removedBgImageUrl}
-                  finalImage={finalImageUrl}
-                  processingStep={currentProcessingStep}
-                />
-              )}
+          {/* Error Retry Card */}
+          <ErrorRetryCard
+            onRetryStep={handleRetryStep}
+            onResetAll={handleResetSession}
+            sx={{ mt: 3 }}
+          />
 
-              {!originalImageUrl && (
-                <Box
-                  sx={{
-                    height: 400,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    bgcolor: 'grey.100',
-                    borderRadius: 1,
-                    border: '2px dashed',
-                    borderColor: 'grey.300',
-                  }}
-                >
-                  <Box sx={{ textAlign: 'center' }}>
-                    <Iconify
-                      icon="solar:gallery-bold-duotone"
-                      width={64}
-                      sx={{ color: 'grey.400', mb: 2 }}
-                    />
-                    <Typography variant="body1" color="text.secondary">
-                      Upload hình ảnh để xem preview
-                    </Typography>
-                  </Box>
+          {/* Quick Actions */}
+          {finalImageUrl && (
+            <Card sx={{ mt: 3 }}>
+              <CardContent>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  Thao Tác Nhanh
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Button
+                    variant="contained"
+                    color="success"
+                    onClick={handleDownload}
+                    startIcon={<Iconify icon="solar:download-bold" />}
+                    fullWidth
+                  >
+                    Tải Xuống
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    onClick={handleReset}
+                    startIcon={<Iconify icon="solar:restart-bold" />}
+                    fullWidth
+                  >
+                    Tạo Mới
+                  </Button>
                 </Box>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </Grid>
       </Grid>
     </Container>

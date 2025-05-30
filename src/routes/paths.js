@@ -179,6 +179,7 @@ export const paths = {
     root: ROOTS.BACKGROUND_GENERATOR,
     dashboard: `${ROOTS.BACKGROUND_GENERATOR}/dashboard`,
     generator: `${ROOTS.BACKGROUND_GENERATOR}/generator`,
+    generatorV2: `${ROOTS.BACKGROUND_GENERATOR}/v2`,
     gallery: `${ROOTS.BACKGROUND_GENERATOR}/gallery`,
     settings: `${ROOTS.BACKGROUND_GENERATOR}/settings`,
   },

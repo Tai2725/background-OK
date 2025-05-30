@@ -191,7 +191,7 @@ CREATE TABLE bg_processing_history (
 
 4. Generate Background
    ├── User selects style or custom prompt
-   ├── Call Runware imageToImage API with LoRA
+   ├── Call Runware inpainting API with LoRA
    ├── Poll for completion
    ├── Download result and upload to bg-processed-images
    └── Update bg_images.final_url
@@ -270,9 +270,9 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id
 - [ ] Preview displays correctly
 
 ### Checkpoint 3: Runware Integration
-- [ ] Remove background API works
+- [ ] Remove background with mask API works
 - [ ] Upscale API works
-- [ ] Generate background API works
+- [ ] Generate background API works, use inpainting with mask image
 
 ### Checkpoint 4: Full Workflow
 - [ ] End-to-end processing works
@@ -299,7 +299,7 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id
 
 - [ ] User can sign up/login with Google
 - [ ] User can upload images successfully
-- [ ] Background removal works consistently
+- [ ] Background removal with mask works consistently
 - [ ] Image upscaling works
 - [ ] Background generation produces good results
 - [ ] Gallery displays all processed images

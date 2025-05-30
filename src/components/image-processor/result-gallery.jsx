@@ -137,7 +137,7 @@ export function ResultGallery({
       {/* Results Grid */}
       <Grid container spacing={3}>
         {results.map((result, index) => (
-          <Grid item xs={12} sm={6} md={4} key={index}>
+          <Grid item size={{ xs: 12, sm: 6, md: 4 }} key={index}>
             <Card
               sx={{
                 position: 'relative',

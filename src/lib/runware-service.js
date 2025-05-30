@@ -70,7 +70,10 @@ export class RunwareService {
         throw new Error('Hình ảnh đầu vào là bắt buộc');
       }
 
+      console.log('🔧 RunwareService.removeBackground called with:', { inputImage, options });
+
       const headers = await this.createHeaders();
+      console.log('🔑 RunwareService headers created:', JSON.stringify(headers, null, 2));
 
       // Optimized settings for mask generation with runware:109@1 model
       const settings = {
@@ -84,34 +87,65 @@ export class RunwareService {
         ...options.settings // Cho phép override settings nếu cần
       };
 
+      const requestPayload = {
+        operation: 'removeBackground',
+        data: { inputImage },
+        options: {
+          model: 'runware:109@1', // Bắt buộc sử dụng model này để có returnOnlyMask
+          outputFormat: options.outputFormat || 'PNG',
+          outputType: options.outputType || 'URL',
+          outputQuality: options.outputQuality || 95,
+          settings, // Truyền settings object
+        },
+      };
+
+      console.log('📤 RunwareService sending request to:', this.API_BASE_URL);
+      console.log('📋 RunwareService request payload:', JSON.stringify(requestPayload, null, 2));
+
       const response = await fetch(this.API_BASE_URL, {
         method: 'POST',
         headers,
-        body: JSON.stringify({
-          operation: 'removeBackground',
-          data: { inputImage },
-          options: {
-            model: 'runware:109@1', // Bắt buộc sử dụng model này để có returnOnlyMask
-            outputFormat: options.outputFormat || 'PNG',
-            outputType: options.outputType || 'URL',
-            outputQuality: options.outputQuality || 95,
-            settings, // Truyền settings object
-          },
-        }),
+        body: JSON.stringify(requestPayload),
       });
+
+      console.log('📡 RunwareService response status:', response.status, response.statusText);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        console.error('❌ RunwareService API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData
+        });
         throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
 
       const result = await response.json();
+      console.log('📥 RunwareService response data:', JSON.stringify(result, null, 2));
 
       if (!result.success) {
+        console.error('❌ RunwareService server error:', result.error);
         throw new Error(result.error || 'Lỗi xử lý từ server');
       }
 
-      return result;
+      // Validate response data
+      if (!result.data) {
+        throw new Error('Không có dữ liệu trong response từ server');
+      }
+
+      // Ensure imageURL is available
+      if (!result.data.imageURL) {
+        throw new Error('Không có URL hình ảnh trong response từ server');
+      }
+
+      return {
+        success: true,
+        data: {
+          ...result.data,
+          // Ensure consistent field naming for backward compatibility
+          imageUrl: result.data.imageURL,
+        },
+      };
     } catch (error) {
       console.error('Remove background error:', error);
       return {
@@ -165,7 +199,24 @@ export class RunwareService {
         throw new Error(result.error || 'Lỗi xử lý từ server');
       }
 
-      return result;
+      // Validate response data
+      if (!result.data) {
+        throw new Error('Không có dữ liệu trong response từ server');
+      }
+
+      // Ensure imageURL is available
+      if (!result.data.imageURL) {
+        throw new Error('Không có URL hình ảnh trong response từ server');
+      }
+
+      return {
+        success: true,
+        data: {
+          ...result.data,
+          // Ensure consistent field naming for backward compatibility
+          imageUrl: result.data.imageURL,
+        },
+      };
     } catch (error) {
       console.error('Generate image error:', error);
       return {
@@ -196,7 +247,7 @@ export class RunwareService {
           operation: 'upscale',
           data: { inputImage },
           options: {
-            model: options.model || 'runware:111@1',
+            model: options.model || 'runware:109@1',
             scale: options.scale || 2,
             outputFormat: options.outputFormat || 'PNG',
             outputType: options.outputType || 'URL',
@@ -215,7 +266,24 @@ export class RunwareService {
         throw new Error(result.error || 'Lỗi xử lý từ server');
       }
 
-      return result;
+      // Validate response data
+      if (!result.data) {
+        throw new Error('Không có dữ liệu trong response từ server');
+      }
+
+      // Ensure imageURL is available
+      if (!result.data.imageURL) {
+        throw new Error('Không có URL hình ảnh trong response từ server');
+      }
+
+      return {
+        success: true,
+        data: {
+          ...result.data,
+          // Ensure consistent field naming for backward compatibility
+          imageUrl: result.data.imageURL,
+        },
+      };
     } catch (error) {
       console.error('Upscale image error:', error);
       return {
@@ -303,7 +371,24 @@ export class RunwareService {
         throw new Error(result.error || 'Lỗi xử lý từ server');
       }
 
-      return result;
+      // Validate response data
+      if (!result.data) {
+        throw new Error('Không có dữ liệu trong response từ server');
+      }
+
+      // Ensure imageURL is available
+      if (!result.data.imageURL) {
+        throw new Error('Không có URL hình ảnh trong response từ server');
+      }
+
+      return {
+        success: true,
+        data: {
+          ...result.data,
+          // Ensure consistent field naming for backward compatibility
+          imageUrl: result.data.imageURL,
+        },
+      };
     } catch (error) {
       console.error('Generate background error:', error);
       return {
