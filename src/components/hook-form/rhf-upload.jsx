@@ -61,14 +61,21 @@ export function RHFUpload({ name, multiple, helperText, ...other }) {
       render={({ field, fieldState: { error } }) => {
         const uploadProps = {
           multiple,
-          accept: { 'image/*': [] },
+          accept: { 'image/*': ['.jpeg', '.jpg', '.png', '.webp'] },
           error: !!error,
           helperText: error?.message ?? helperText,
         };
 
-        const onDrop = (acceptedFiles) => {
-          const value = multiple ? [...field.value, ...acceptedFiles] : acceptedFiles[0];
+        const onDrop = (acceptedFiles, fileRejections) => {
+          // Handle file rejections
+          if (fileRejections.length > 0) {
+            const rejection = fileRejections[0];
+            const errorMessage = rejection.errors[0]?.message || 'File không hợp lệ';
+            console.error('File rejection:', errorMessage);
+            return;
+          }
 
+          const value = multiple ? [...(field.value || []), ...acceptedFiles] : acceptedFiles[0];
           setValue(name, value, { shouldValidate: true });
         };
 

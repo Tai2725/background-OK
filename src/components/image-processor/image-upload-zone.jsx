@@ -1,14 +1,15 @@
-import { useState, useCallback } from 'react';
+'use client';
+
 import { useDropzone } from 'react-dropzone';
+import { useState, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
+import Chip from '@mui/material/Chip';
+import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import LinearProgress from '@mui/material/LinearProgress';
-import Alert from '@mui/material/Alert';
-import IconButton from '@mui/material/IconButton';
-import Chip from '@mui/material/Chip';
 
 import { Iconify } from '../iconify';
 
@@ -30,9 +31,9 @@ export function ImageUploadZone({
   const onDrop = useCallback(
     (acceptedFiles, rejectedFiles) => {
       if (rejectedFiles.length > 0) {
-        const errors = rejectedFiles.map(file => ({
+        const errors = rejectedFiles.map((file) => ({
           file: file.file.name,
-          errors: file.errors.map(e => e.message),
+          errors: file.errors.map((e) => e.message),
         }));
         console.error('Rejected files:', errors);
         return;
@@ -40,7 +41,7 @@ export function ImageUploadZone({
 
       const newFiles = acceptedFiles.slice(0, maxFiles);
       setSelectedFiles(newFiles);
-      
+
       if (onFilesSelected) {
         onFilesSelected(newFiles);
       }
@@ -85,16 +86,12 @@ export function ImageUploadZone({
           p: 4,
           border: 2,
           borderStyle: 'dashed',
-          borderColor: hasError
-            ? 'error.main'
-            : isDragActive
-            ? 'primary.main'
-            : 'grey.300',
+          borderColor: hasError ? 'error.main' : isDragActive ? 'primary.main' : 'grey.300',
           bgcolor: hasError
             ? 'error.lighter'
             : isDragActive
-            ? 'primary.lighter'
-            : 'background.neutral',
+              ? 'primary.lighter'
+              : 'background.neutral',
           cursor: disabled || isUploading ? 'not-allowed' : 'pointer',
           transition: 'all 0.3s ease',
           '&:hover': {
@@ -118,16 +115,12 @@ export function ImageUploadZone({
               hasError
                 ? 'solar:close-circle-bold'
                 : isDragActive
-                ? 'solar:upload-bold-duotone'
-                : 'solar:cloud-upload-bold-duotone'
+                  ? 'solar:upload-bold-duotone'
+                  : 'solar:cloud-upload-bold-duotone'
             }
             width={64}
             sx={{
-              color: hasError
-                ? 'error.main'
-                : isDragActive
-                ? 'primary.main'
-                : 'grey.500',
+              color: hasError ? 'error.main' : isDragActive ? 'primary.main' : 'grey.500',
               mb: 2,
             }}
           />
@@ -135,21 +128,17 @@ export function ImageUploadZone({
           <Typography
             variant="h6"
             sx={{
-              color: hasError
-                ? 'error.main'
-                : isDragActive
-                ? 'primary.main'
-                : 'text.primary',
+              color: hasError ? 'error.main' : isDragActive ? 'primary.main' : 'text.primary',
               mb: 1,
             }}
           >
             {hasError
               ? 'File không hợp lệ'
               : isDragActive
-              ? 'Thả file vào đây'
-              : isUploading
-              ? 'Đang upload...'
-              : 'Kéo thả hoặc click để upload'}
+                ? 'Thả file vào đây'
+                : isUploading
+                  ? 'Đang upload...'
+                  : 'Kéo thả hoặc click để upload'}
           </Typography>
 
           <Typography
@@ -198,9 +187,7 @@ export function ImageUploadZone({
               mb: 2,
             }}
           >
-            <Typography variant="subtitle2">
-              Đã chọn {selectedFiles.length} file
-            </Typography>
+            <Typography variant="subtitle2">Đã chọn {selectedFiles.length} file</Typography>
             <Button
               size="small"
               color="error"

@@ -17,6 +17,8 @@ import { paths } from 'src/routes/paths';
 import { usePathname } from 'src/routes/hooks';
 import { RouterLink } from 'src/routes/components';
 
+import { useUserProfile } from 'src/hooks/use-user-profile';
+
 import { _mock } from 'src/_mock';
 
 import { Label } from 'src/components/label';
@@ -24,7 +26,7 @@ import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
 import { AnimateBorder } from 'src/components/animate';
 
-import { useMockedUser } from 'src/auth/hooks';
+import { useAuthContext } from 'src/auth/hooks';
 
 import { UpgradeBlock } from './nav-upgrade';
 import { AccountButton } from './account-button';
@@ -35,9 +37,15 @@ import { SignOutButton } from './sign-out-button';
 export function AccountDrawer({ data = [], sx, ...other }) {
   const pathname = usePathname();
 
-  const { user } = useMockedUser();
+  const { user } = useAuthContext();
+  const { profile } = useUserProfile();
 
   const { value: open, onFalse: onClose, onTrue: onOpen } = useBoolean();
+
+  // Sử dụng thông tin từ profile hoặc fallback về user auth
+  const displayName = profile?.display_name || user?.displayName || user?.email;
+  const avatarUrl = profile?.avatar_url || user?.photoURL;
+  const email = user?.email;
 
   const renderAvatar = () => (
     <AnimateBorder
@@ -46,8 +54,8 @@ export function AccountDrawer({ data = [], sx, ...other }) {
         primaryBorder: { size: 120, sx: { color: 'primary.main' } },
       }}
     >
-      <Avatar src={user?.photoURL} alt={user?.displayName} sx={{ width: 1, height: 1 }}>
-        {user?.displayName?.charAt(0).toUpperCase()}
+      <Avatar src={avatarUrl} alt={displayName} sx={{ width: 1, height: 1 }}>
+        {displayName?.charAt(0).toUpperCase()}
       </Avatar>
     </AnimateBorder>
   );
@@ -110,8 +118,8 @@ export function AccountDrawer({ data = [], sx, ...other }) {
     <>
       <AccountButton
         onClick={onOpen}
-        photoURL={user?.photoURL}
-        displayName={user?.displayName}
+        photoURL={avatarUrl}
+        displayName={displayName}
         sx={sx}
         {...other}
       />
@@ -149,11 +157,11 @@ export function AccountDrawer({ data = [], sx, ...other }) {
             {renderAvatar()}
 
             <Typography variant="subtitle1" noWrap sx={{ mt: 2 }}>
-              {user?.displayName}
+              {displayName}
             </Typography>
 
             <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }} noWrap>
-              {user?.email}
+              {email}
             </Typography>
           </Box>
 

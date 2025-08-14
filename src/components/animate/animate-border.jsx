@@ -38,19 +38,23 @@ export function AnimateBorder({ sx, children, duration, slotProps, className, ..
 
   useEffect(() => {
     const handleVisibility = () => {
-      if (rootRef.current) {
+      if (rootRef.current && typeof window !== 'undefined') {
         const displayStyle = getComputedStyle(rootRef.current).display;
         setIsHidden(displayStyle === 'none');
       }
     };
 
-    handleVisibility();
+    // Only run on client side
+    if (typeof window !== 'undefined') {
+      handleVisibility();
+      window.addEventListener('resize', handleVisibility);
 
-    window.addEventListener('resize', handleVisibility);
+      return () => {
+        window.removeEventListener('resize', handleVisibility);
+      };
+    }
 
-    return () => {
-      window.removeEventListener('resize', handleVisibility);
-    };
+    return undefined;
   }, []);
 
   const outlineColor =

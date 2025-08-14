@@ -1,13 +1,15 @@
-import { HomeView } from 'src/sections/home/view';
+import { CONFIG } from 'src/global-config';
+
+import { MainHomeView } from 'src/sections/home/view/main-home-view';
 
 // ----------------------------------------------------------------------
 
 export const metadata = {
-  title: 'Minimals UI: The starting point for your next project',
+  title: `${CONFIG.appName} - Creative Tools Hub`,
   description:
-    'The starting point for your next project with Minimal UI Kit, built on the newest version of Material-UI ©, ready to be customized to your style',
+    'Nền tảng công cụ sáng tạo và chia sẻ kiến thức thiết kế. Tạo background đẹp với AI, đọc blog hướng dẫn và tips hữu ích.',
 };
 
 export default function Page() {
-  return <HomeView />;
+  return <MainHomeView />;
 }

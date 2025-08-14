@@ -33,18 +33,14 @@ export class SupabaseStorage {
         uploadOptions.contentType = contentType;
       }
 
-      const { data, error } = await supabase.storage
-        .from(bucket)
-        .upload(path, file, uploadOptions);
+      const { data, error } = await supabase.storage.from(bucket).upload(path, file, uploadOptions);
 
       if (error) {
         throw error;
       }
 
       // Get public URL
-      const { data: urlData } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(path);
+      const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(path);
 
       return {
         success: true,
@@ -74,15 +70,15 @@ export class SupabaseStorage {
     try {
       // Remove data URL prefix if present
       const base64String = base64Data.replace(/^data:image\/[a-z]+;base64,/, '');
-      
+
       // Convert base64 to blob
       const byteCharacters = atob(base64String);
       const byteNumbers = new Array(byteCharacters.length);
-      
+
       for (let i = 0; i < byteCharacters.length; i++) {
         byteNumbers[i] = byteCharacters.charCodeAt(i);
       }
-      
+
       const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], { type: contentType });
 
@@ -110,12 +106,9 @@ export class SupabaseStorage {
       const fileName = filename || `${timestamp}.${fileExtension}`;
       const filePath = `${userId}/${fileName}`;
 
-      return await this.uploadFile(
-        file, 
-        this.BUCKETS.USER_UPLOADS, 
-        filePath,
-        { contentType: file.type }
-      );
+      return await this.uploadFile(file, this.BUCKETS.USER_UPLOADS, filePath, {
+        contentType: file.type,
+      });
     } catch (error) {
       console.error('SupabaseStorage uploadUserImage error:', error);
       return {
@@ -162,9 +155,7 @@ export class SupabaseStorage {
    */
   static async deleteFile(bucket, path) {
     try {
-      const { error } = await supabase.storage
-        .from(bucket)
-        .remove([path]);
+      const { error } = await supabase.storage.from(bucket).remove([path]);
 
       if (error) {
         throw error;
@@ -190,9 +181,7 @@ export class SupabaseStorage {
    * @returns {string} - Public URL
    */
   static getPublicUrl(bucket, path) {
-    const { data } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(path);
+    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
 
     return data.publicUrl;
   }
@@ -208,13 +197,11 @@ export class SupabaseStorage {
     try {
       const { limit = 100, offset = 0, sortBy } = options;
 
-      const { data, error } = await supabase.storage
-        .from(bucket)
-        .list(folder, {
-          limit,
-          offset,
-          sortBy,
-        });
+      const { data, error } = await supabase.storage.from(bucket).list(folder, {
+        limit,
+        offset,
+        sortBy,
+      });
 
       if (error) {
         throw error;
@@ -288,10 +275,20 @@ export class SupabaseStorage {
    * @returns {string} - Unique filename
    */
   static generateUniqueFilename(originalName, userId) {
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(2, 8);
+    // Use crypto.randomUUID if available for better uniqueness
+    const generateUniqueId = () => {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID().replace(/-/g, '').substring(0, 12);
+      }
+      // Fallback for environments without crypto.randomUUID
+      const timestamp = Date.now();
+      const random = Math.floor(Math.random() * 1000000).toString(36);
+      return `${timestamp}_${random}`;
+    };
+
     const extension = originalName.split('.').pop();
-    return `${userId}_${timestamp}_${random}.${extension}`;
+    const uniqueId = generateUniqueId();
+    return `${userId}_${uniqueId}.${extension}`;
   }
 
   /**

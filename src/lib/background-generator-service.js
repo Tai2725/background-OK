@@ -1,5 +1,5 @@
-import { ImageUploadService } from './image-upload-service';
 import { RunwareService } from './runware-service';
+import { ImageUploadService } from './image-upload-service';
 
 // ----------------------------------------------------------------------
 
@@ -136,7 +136,9 @@ export class BackgroundGeneratorService {
           });
 
           // Download và lưu
-          const upscaledBlob = await RunwareService.downloadImageAsBlob(upscaleResult.data.imageURL);
+          const upscaledBlob = await RunwareService.downloadImageAsBlob(
+            upscaleResult.data.imageURL
+          );
           const savedUpscaled = await ImageUploadService.uploadProcessedImage(
             upscaledBlob,
             userId,
@@ -166,7 +168,9 @@ export class BackgroundGeneratorService {
           });
 
           // Download và lưu
-          const enhancedBlob = await RunwareService.downloadImageAsBlob(enhanceResult.data.imageURL);
+          const enhancedBlob = await RunwareService.downloadImageAsBlob(
+            enhanceResult.data.imageURL
+          );
           const savedEnhanced = await ImageUploadService.uploadProcessedImage(
             enhancedBlob,
             userId,

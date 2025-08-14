@@ -1,14 +1,16 @@
-import { useState, useEffect } from 'react';
+'use client';
+
+import { useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
+import Chip from '@mui/material/Chip';
+import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
+import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
 import LinearProgress from '@mui/material/LinearProgress';
 import CircularProgress from '@mui/material/CircularProgress';
-import Alert from '@mui/material/Alert';
-import Chip from '@mui/material/Chip';
-import Divider from '@mui/material/Divider';
 
 import { Iconify } from '../iconify';
 
@@ -51,18 +53,15 @@ export function ProcessingStatus({
 }) {
   const [expandedTask, setExpandedTask] = useState(null);
 
-  const completedTasks = tasks.filter(task => task.status === 'completed');
-  const errorTasks = tasks.filter(task => task.status === 'error');
-  const processingTasks = tasks.filter(task => 
-    ['uploading', 'processing'].includes(task.status)
-  );
+  const completedTasks = tasks.filter((task) => task.status === 'completed');
+  const errorTasks = tasks.filter((task) => task.status === 'error');
+  const processingTasks = tasks.filter((task) => ['uploading', 'processing'].includes(task.status));
 
-  const overallProgress = tasks.length > 0 
-    ? Math.round((completedTasks.length / tasks.length) * 100)
-    : 0;
+  const overallProgress =
+    tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 0;
 
   const hasErrors = errorTasks.length > 0;
-  const isProcessing = processingTasks.length > 0;
+  // const isProcessing = processingTasks.length > 0;
   const isCompleted = tasks.length > 0 && completedTasks.length === tasks.length;
 
   return (
@@ -77,10 +76,8 @@ export function ProcessingStatus({
             mb: 2,
           }}
         >
-          <Typography variant="h6">
-            Trạng thái xử lý
-          </Typography>
-          
+          <Typography variant="h6">Trạng thái xử lý</Typography>
+
           {isCompleted && completedTasks.length > 0 && (
             <Button
               variant="contained"
@@ -111,7 +108,7 @@ export function ProcessingStatus({
                 {completedTasks.length}/{tasks.length} hoàn thành
               </Typography>
             </Box>
-            
+
             <LinearProgress
               variant="determinate"
               value={overallProgress}
@@ -124,11 +121,8 @@ export function ProcessingStatus({
                 },
               }}
             />
-            
-            <Typography
-              variant="caption"
-              sx={{ mt: 1, display: 'block', textAlign: 'center' }}
-            >
+
+            <Typography variant="caption" sx={{ mt: 1, display: 'block', textAlign: 'center' }}>
               {overallProgress}% hoàn thành
             </Typography>
           </Box>
@@ -154,7 +148,7 @@ export function ProcessingStatus({
                 size="small"
               />
             )}
-            
+
             {processingTasks.length > 0 && (
               <Chip
                 icon={<CircularProgress size={16} />}
@@ -164,7 +158,7 @@ export function ProcessingStatus({
                 size="small"
               />
             )}
-            
+
             {errorTasks.length > 0 && (
               <Chip
                 icon={<Iconify icon="solar:close-circle-bold" />}
@@ -194,7 +188,7 @@ export function ProcessingStatus({
             </Button>
           }
         >
-          Có {errorTasks.length} file xử lý thất bại. Click "Thử lại" để xử lý lại.
+          Có {errorTasks.length} file xử lý thất bại. Click &quot;Thử lại&quot; để xử lý lại.
         </Alert>
       )}
 
@@ -202,7 +196,7 @@ export function ProcessingStatus({
       {showDetails && tasks.length > 0 && (
         <Box>
           <Divider sx={{ mb: 2 }} />
-          
+
           <Typography variant="subtitle2" sx={{ mb: 2 }}>
             Chi tiết từng file
           </Typography>
@@ -233,11 +227,8 @@ export function ProcessingStatus({
                     }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
-                      <Iconify
-                        icon={config.icon}
-                        sx={{ color: `${config.color}.main` }}
-                      />
-                      
+                      <Iconify icon={config.icon} sx={{ color: `${config.color}.main` }} />
+
                       <Box sx={{ flex: 1, minWidth: 0 }}>
                         <Typography
                           variant="body2"
@@ -250,7 +241,7 @@ export function ProcessingStatus({
                         >
                           {task.filename}
                         </Typography>
-                        
+
                         <Typography variant="caption" color="text.secondary">
                           {config.label}
                           {task.progress && ` - ${task.progress}%`}
@@ -260,10 +251,8 @@ export function ProcessingStatus({
                     </Box>
 
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      {task.status === 'processing' && (
-                        <CircularProgress size={20} />
-                      )}
-                      
+                      {task.status === 'processing' && <CircularProgress size={20} />}
+
                       {task.status === 'error' && onRetry && (
                         <Button
                           size="small"
@@ -277,7 +266,7 @@ export function ProcessingStatus({
                           Thử lại
                         </Button>
                       )}
-                      
+
                       <Iconify
                         icon={isExpanded ? 'solar:alt-arrow-up-bold' : 'solar:alt-arrow-down-bold'}
                         sx={{ color: 'text.secondary' }}
@@ -293,7 +282,7 @@ export function ProcessingStatus({
                           {task.error}
                         </Alert>
                       )}
-                      
+
                       {task.result && (
                         <Box>
                           <Typography variant="caption" color="text.secondary">
@@ -322,14 +311,8 @@ export function ProcessingStatus({
             color: 'text.secondary',
           }}
         >
-          <Iconify
-            icon="solar:file-smile-bold-duotone"
-            width={64}
-            sx={{ mb: 2, opacity: 0.5 }}
-          />
-          <Typography variant="body2">
-            Chưa có file nào được xử lý
-          </Typography>
+          <Iconify icon="solar:file-smile-bold-duotone" width={64} sx={{ mb: 2, opacity: 0.5 }} />
+          <Typography variant="body2">Chưa có file nào được xử lý</Typography>
         </Box>
       )}
     </Card>

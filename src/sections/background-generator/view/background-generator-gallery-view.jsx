@@ -6,27 +6,27 @@ import {
   Box,
   Card,
   Grid,
-  Button,
-  Container,
-  Typography,
-  CardContent,
-  CardActions,
-  IconButton,
   Chip,
   Menu,
+  Button,
   MenuItem,
+  Container,
+  Typography,
+  IconButton,
+  CardContent,
+  CardActions,
 } from '@mui/material';
 
 import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hooks';
 
-import { useAuthContext } from 'src/auth/hooks';
-
-import { toast } from 'src/components/snackbar';
 import { Image } from 'src/components/image';
+import { toast } from 'src/components/snackbar';
 import { Iconify } from 'src/components/iconify';
-import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
 import { EmptyContent } from 'src/components/empty-content';
+import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
+
+import { useAuthContext } from 'src/auth/hooks';
 
 // ----------------------------------------------------------------------
 
@@ -101,7 +101,7 @@ export function BackgroundGeneratorGalleryView() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     toast.success('Tải xuống thành công!');
     handleMenuClose();
   };
@@ -109,7 +109,7 @@ export function BackgroundGeneratorGalleryView() {
   const handleDelete = async (item) => {
     try {
       // TODO: Delete from Supabase
-      setGalleryItems(prev => prev.filter(i => i.id !== item.id));
+      setGalleryItems((prev) => prev.filter((i) => i.id !== item.id));
       toast.success('Đã xóa hình ảnh');
     } catch (error) {
       toast.error('Lỗi khi xóa hình ảnh');
@@ -122,7 +122,7 @@ export function BackgroundGeneratorGalleryView() {
   };
 
   // Filter items
-  const filteredItems = galleryItems.filter(item => {
+  const filteredItems = galleryItems.filter((item) => {
     if (selectedFilter === 'all') return true;
     if (selectedFilter === 'recent') {
       const oneWeekAgo = new Date();
@@ -231,7 +231,7 @@ export function BackgroundGeneratorGalleryView() {
                       objectFit: 'cover',
                     }}
                   />
-                  
+
                   {/* Overlay Actions */}
                   <Box
                     sx={{
@@ -320,18 +320,17 @@ export function BackgroundGeneratorGalleryView() {
           <Iconify icon="solar:download-bold" sx={{ mr: 1 }} />
           Tải Xuống
         </MenuItem>
-        <MenuItem onClick={() => {
-          // TODO: Share functionality
-          toast.info('Tính năng chia sẻ đang phát triển');
-          handleMenuClose();
-        }}>
+        <MenuItem
+          onClick={() => {
+            // TODO: Share functionality
+            toast.info('Tính năng chia sẻ đang phát triển');
+            handleMenuClose();
+          }}
+        >
           <Iconify icon="solar:share-bold" sx={{ mr: 1 }} />
           Chia Sẻ
         </MenuItem>
-        <MenuItem 
-          onClick={() => handleDelete(selectedItem)}
-          sx={{ color: 'error.main' }}
-        >
+        <MenuItem onClick={() => handleDelete(selectedItem)} sx={{ color: 'error.main' }}>
           <Iconify icon="solar:trash-bin-trash-bold" sx={{ mr: 1 }} />
           Xóa
         </MenuItem>

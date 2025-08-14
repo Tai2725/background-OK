@@ -4,23 +4,21 @@ import { useBoolean } from 'minimal-shared/hooks';
 
 import Box from '@mui/material/Box';
 import Alert from '@mui/material/Alert';
-import Button from '@mui/material/Button';
 
-import { paths } from 'src/routes/paths';
 import { usePathname } from 'src/routes/hooks';
 
 import { Logo } from 'src/components/logo';
 
 import { NavMobile } from './nav/mobile';
 import { NavDesktop } from './nav/desktop';
-import { Footer, HomeFooter } from './footer';
+import { BlogFooter } from './footer/blog-footer';
 import { MainSection } from '../core/main-section';
 import { MenuButton } from '../components/menu-button';
 import { LayoutSection } from '../core/layout-section';
 import { HeaderSection } from '../core/header-section';
-import { navData as mainNavData } from '../nav-config-main';
 import { SignInButton } from '../components/sign-in-button';
 import { SettingsButton } from '../components/settings-button';
+import { blogFocusedNavData } from '../nav-config-blog-focused';
 
 // ----------------------------------------------------------------------
 
@@ -31,7 +29,7 @@ export function MainLayout({ sx, cssVars, children, slotProps, layoutQuery = 'md
 
   const isHomePage = pathname === '/';
 
-  const navData = slotProps?.nav?.data ?? mainNavData;
+  const navData = slotProps?.nav?.data ?? blogFocusedNavData;
 
   const renderHeader = () => {
     const headerSlots = {
@@ -76,18 +74,7 @@ export function MainLayout({ sx, cssVars, children, slotProps, layoutQuery = 'md
             <SignInButton />
 
             {/** @slot Purchase button */}
-            <Button
-              variant="contained"
-              rel="noopener"
-              target="_blank"
-              href={paths.minimalStore}
-              sx={(theme) => ({
-                display: 'none',
-                [theme.breakpoints.up(layoutQuery)]: { display: 'inline-flex' },
-              })}
-            >
-              Purchase
-            </Button>
+            {/* Purchase button hidden for blog-focused layout */}
           </Box>
         </>
       ),
@@ -104,12 +91,7 @@ export function MainLayout({ sx, cssVars, children, slotProps, layoutQuery = 'md
     );
   };
 
-  const renderFooter = () =>
-    isHomePage ? (
-      <HomeFooter sx={slotProps?.footer?.sx} />
-    ) : (
-      <Footer sx={slotProps?.footer?.sx} layoutQuery={layoutQuery} />
-    );
+  const renderFooter = () => <BlogFooter sx={slotProps?.footer?.sx} />;
 
   const renderMain = () => <MainSection {...slotProps?.main}>{children}</MainSection>;
 

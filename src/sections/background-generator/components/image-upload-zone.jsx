@@ -3,11 +3,7 @@
 import { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 
-import {
-  Box,
-  Typography,
-  alpha,
-} from '@mui/material';
+import { Box, alpha, Typography } from '@mui/material';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -53,8 +49,8 @@ export function ImageUploadZone({ onUpload, disabled = false }) {
         bgcolor: hasError
           ? alpha('#FF5630', 0.08)
           : isDragActive
-          ? alpha('#00AB55', 0.08)
-          : alpha('#919EAB', 0.04),
+            ? alpha('#00AB55', 0.08)
+            : alpha('#919EAB', 0.04),
         transition: 'all 0.3s ease',
         '&:hover': {
           opacity: disabled ? 1 : 0.8,
@@ -69,8 +65,8 @@ export function ImageUploadZone({ onUpload, disabled = false }) {
           hasError
             ? 'solar:close-circle-bold'
             : isDragActive
-            ? 'solar:upload-bold-duotone'
-            : 'solar:cloud-upload-bold-duotone'
+              ? 'solar:upload-bold-duotone'
+              : 'solar:cloud-upload-bold-duotone'
         }
         width={64}
         sx={{
@@ -89,8 +85,8 @@ export function ImageUploadZone({ onUpload, disabled = false }) {
         {hasError
           ? 'File không hợp lệ'
           : isDragActive
-          ? 'Thả file vào đây'
-          : 'Kéo thả hoặc click để upload'}
+            ? 'Thả file vào đây'
+            : 'Kéo thả hoặc click để upload'}
       </Typography>
 
       <Typography

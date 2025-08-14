@@ -1,27 +1,28 @@
 'use client';
 
-import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { useRef, useMemo, useState, useEffect, useCallback } from 'react';
 
 import {
   Box,
   Card,
-  Grid,
   Chip,
+  Fade,
+  alpha,
+  Stack,
   Button,
   TextField,
+  useTheme,
   Typography,
+  IconButton,
   CardContent,
   CardActionArea,
-  Fade,
-  Zoom,
   InputAdornment,
-  IconButton,
-  Tooltip,
 } from '@mui/material';
+import { BACKGROUND_STYLES } from 'src/lib/constants/background-styles';
 
 import { Iconify } from 'src/components/iconify';
 
-import { BACKGROUND_STYLES } from 'src/lib/runware';
+import styles from './background-style-selector.module.css';
 
 // ----------------------------------------------------------------------
 
@@ -32,6 +33,7 @@ export function BackgroundStyleSelector({
   onCustomPromptChange,
   disabled = false,
 }) {
+  const theme = useTheme();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [localPrompt, setLocalPrompt] = useState(customPrompt || '');
   const [promptError, setPromptError] = useState('');
@@ -43,17 +45,18 @@ export function BackgroundStyleSelector({
     setLocalPrompt(customPrompt || '');
   }, [customPrompt]);
 
-
-
-  const handleStyleClick = useCallback((style) => {
-    if (!disabled && onStyleSelect) {
-      onStyleSelect(style);
-      // Tự động cập nhật custom prompt với prompt của style đã chọn
-      if (onCustomPromptChange) {
-        onCustomPromptChange(style.prompt);
+  const handleStyleClick = useCallback(
+    (style) => {
+      if (!disabled && onStyleSelect) {
+        onStyleSelect(style);
+        // Tự động cập nhật custom prompt với prompt của style đã chọn
+        if (onCustomPromptChange) {
+          onCustomPromptChange(style.prompt);
+        }
       }
-    }
-  }, [disabled, onStyleSelect, onCustomPromptChange]);
+    },
+    [disabled, onStyleSelect, onCustomPromptChange]
+  );
 
   const handleCustomPromptSubmit = () => {
     if (customPrompt.trim() && onStyleSelect) {
@@ -67,54 +70,62 @@ export function BackgroundStyleSelector({
   };
 
   // Get unique categories - memoized
-  const categories = useMemo(() =>
-    ['all', ...new Set(BACKGROUND_STYLES.map(style => style.category))],
+  const categories = useMemo(
+    () => ['all', ...new Set(BACKGROUND_STYLES.map((style) => style.category))],
     []
   );
 
   // Filter styles by category - memoized
-  const filteredStyles = useMemo(() =>
-    selectedCategory === 'all'
-      ? BACKGROUND_STYLES
-      : BACKGROUND_STYLES.filter(style => style.category === selectedCategory),
+  const filteredStyles = useMemo(
+    () =>
+      selectedCategory === 'all'
+        ? BACKGROUND_STYLES
+        : BACKGROUND_STYLES.filter((style) => style.category === selectedCategory),
     [selectedCategory]
   );
 
-  const categoryLabels = useMemo(() => ({
-    all: 'Tất Cả',
-    studio: 'Studio',
-    nature: 'Thiên Nhiên',
-    interior: 'Nội Thất',
-    luxury: 'Sang Trọng',
-    natural: 'Tự Nhiên',
-  }), []);
+  const categoryLabels = useMemo(
+    () => ({
+      all: 'Tất Cả',
+      studio: 'Studio',
+      nature: 'Tự Nhiên',
+      luxury: 'Sang Trọng',
+      technology: 'Công Nghệ',
+      fantasy: 'Huyền Bí',
+      interior: 'Nội Thất',
+    }),
+    []
+  );
 
   // Debounced prompt change handler
-  const handleCustomPromptChange = useCallback((e) => {
-    const value = e.target.value;
-    setLocalPrompt(value);
+  const handleCustomPromptChange = useCallback(
+    (e) => {
+      const value = e.target.value;
+      setLocalPrompt(value);
 
-    // Clear previous timeout
-    if (debounceTimeoutRef.current) {
-      clearTimeout(debounceTimeoutRef.current);
-    }
-
-    // Validate prompt
-    if (value.length > 500) {
-      setPromptError('Prompt không được vượt quá 500 ký tự');
-    } else if (value.trim() && value.trim().length < 10) {
-      setPromptError('Prompt phải có ít nhất 10 ký tự');
-    } else {
-      setPromptError('');
-    }
-
-    // Debounce the external callback
-    debounceTimeoutRef.current = setTimeout(() => {
-      if (onCustomPromptChange) {
-        onCustomPromptChange(value);
+      // Clear previous timeout
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
       }
-    }, 300);
-  }, [onCustomPromptChange]);
+
+      // Validate prompt
+      if (value.length > 500) {
+        setPromptError('Prompt không được vượt quá 500 ký tự');
+      } else if (value.trim() && value.trim().length < 10) {
+        setPromptError('Prompt phải có ít nhất 10 ký tự');
+      } else {
+        setPromptError('');
+      }
+
+      // Debounce the external callback
+      debounceTimeoutRef.current = setTimeout(() => {
+        if (onCustomPromptChange) {
+          onCustomPromptChange(value);
+        }
+      }, 300);
+    },
+    [onCustomPromptChange]
+  );
 
   // Clear prompt handler
   const handleClearPrompt = useCallback(() => {
@@ -126,437 +137,361 @@ export function BackgroundStyleSelector({
   }, [onCustomPromptChange]);
 
   // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
+  useEffect(
+    () => () => {
       if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current);
       }
-    };
-  }, []);
+    },
+    []
+  );
 
   return (
     <Box>
-      {/* Style Presets */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-          Style Background Có Sẵn
-        </Typography>
-
-        {/* Category Filter */}
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>
-            Danh Mục:
+      {/* Ultra Compact Header */}
+      <Box sx={{ mb: 2 }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
+          <Typography variant="h6" fontWeight={600} sx={{ fontSize: '1.1rem' }}>
+            🎨 Chọn Style Background
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            {categories.map((category) => (
-              <Chip
-                key={category}
-                label={categoryLabels[category] || category}
-                variant={selectedCategory === category ? 'filled' : 'outlined'}
-                color={selectedCategory === category ? 'primary' : 'default'}
-                onClick={() => setSelectedCategory(category)}
-                size="small"
-                sx={{ cursor: 'pointer' }}
-              />
-            ))}
-          </Box>
+          <Typography variant="caption" color="text.secondary">
+            {filteredStyles.length} styles
+          </Typography>
+        </Stack>
+
+        {/* Compact Category Filter */}
+        <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mb: 1.5 }}>
+          {categories.map((category) => (
+            <Chip
+              key={category}
+              label={categoryLabels[category] || category}
+              variant={selectedCategory === category ? 'filled' : 'outlined'}
+              color={selectedCategory === category ? 'primary' : 'default'}
+              onClick={() => setSelectedCategory(category)}
+              size="small"
+              sx={{
+                cursor: 'pointer',
+                fontSize: '0.75rem',
+                height: 28,
+                fontWeight: selectedCategory === category ? 600 : 500,
+                '&:hover': {
+                  bgcolor: selectedCategory === category ? 'primary.main' : 'primary.lighter',
+                },
+              }}
+            />
+          ))}
         </Box>
 
-        {/* Style Grid */}
-        <Grid container spacing={2}>
-          {filteredStyles.map((style) => (
-            <Grid item size={{ xs: 12, sm: 6, md: 4 }} key={style.id}>
+        {/* Quick Stats */}
+        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+          Chọn style có sẵn hoặc tự tạo prompt bên dưới
+        </Typography>
+      </Box>
+
+      {/* Ultra Compact Style Grid */}
+      <Box className={styles.styleGrid}>
+        {filteredStyles.map((style) => (
+          <Box key={style.id}>
               <Card
+                className={styles.styleCard}
                 sx={{
                   cursor: disabled ? 'default' : 'pointer',
-                  border: 2,
-                  borderColor: selectedStyle?.id === style.id ? 'primary.main' : 'transparent',
-                  transition: 'all 0.3s ease',
+                  border: 1.5,
+                  borderColor: selectedStyle?.id === style.id ? 'primary.main' : 'grey.300',
+                  borderRadius: 2,
                   '&:hover': {
-                    borderColor: disabled ? 'transparent' : 'primary.light',
-                    transform: disabled ? 'none' : 'translateY(-2px)',
+                    borderColor: disabled ? 'grey.300' : 'primary.main',
                     boxShadow: disabled ? 1 : 3,
                   },
                   opacity: disabled ? 0.6 : 1,
-                  boxShadow: selectedStyle?.id === style.id ? 3 : 1,
+                  boxShadow: selectedStyle?.id === style.id ? 3 : 0.5,
+                  bgcolor: selectedStyle?.id === style.id ? 'primary.lighter' : 'background.paper',
                 }}
               >
-                <CardActionArea
-                  onClick={() => handleStyleClick(style)}
-                  disabled={disabled}
-                >
-                  <CardContent sx={{ p: 2.5, minHeight: 200, display: 'flex', flexDirection: 'column' }}>
-                    {/* Header with Category and Selected Indicator */}
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        mb: 2,
-                      }}
-                    >
+                <CardActionArea onClick={() => handleStyleClick(style)} disabled={disabled} sx={{ height: '100%' }}>
+                  <CardContent className={styles.cardContent}>
+                    {/* Compact Header */}
+                    <Box className={styles.cardHeader}>
                       <Chip
                         label={categoryLabels[style.category] || style.category}
                         size="small"
                         variant="outlined"
+                        color={selectedStyle?.id === style.id ? 'primary' : 'default'}
                         sx={{
-                          fontSize: '0.7rem',
-                          height: 20,
-                          color: selectedStyle?.id === style.id ? 'primary.main' : 'text.secondary',
-                          borderColor: selectedStyle?.id === style.id ? 'primary.main' : 'grey.300',
+                          fontSize: '0.65rem',
+                          height: 18,
+                          fontWeight: 500,
+                          '& .MuiChip-label': { px: 0.5 },
                         }}
                       />
 
-                      {/* Selected Indicator */}
+                      {/* Minimal Selected Indicator */}
                       {selectedStyle?.id === style.id && (
-                        <Zoom in={true}>
-                          <Box
-                            sx={{
-                              bgcolor: 'primary.main',
-                              color: 'white',
-                              borderRadius: '50%',
-                              width: 24,
-                              height: 24,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
-                            <Iconify icon="solar:check-bold" width={14} />
-                          </Box>
-                        </Zoom>
+                        <Box
+                          sx={{
+                            bgcolor: 'primary.main',
+                            color: 'white',
+                            borderRadius: '50%',
+                            width: 20,
+                            height: 20,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <Iconify icon="solar:check-bold" width={12} />
+                        </Box>
                       )}
                     </Box>
 
-                    {/* Style Name */}
+                    {/* Compact Style Name */}
                     <Typography
-                      variant="subtitle1"
+                      variant="subtitle2"
+                      className={styles.cardTitle}
                       sx={{
-                        mb: 1,
-                        fontWeight: 600,
                         color: selectedStyle?.id === style.id ? 'primary.main' : 'text.primary',
-                        transition: 'color 0.3s ease',
                       }}
                     >
                       {style.name}
                     </Typography>
 
-                    {/* Style Description */}
+                    {/* Ultra Compact Description */}
                     <Typography
-                      variant="body2"
+                      variant="caption"
                       color="text.secondary"
-                      sx={{
-                        fontSize: '0.875rem',
-                        lineHeight: 1.4,
-                        mb: 2,
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        flex: 1,
-                      }}
+                      className={styles.cardDescription}
                     >
                       {style.description}
                     </Typography>
 
-                    {/* Prompt Preview */}
+                    {/* Minimal Prompt Preview */}
                     <Box
+                      className={styles.promptPreview}
                       sx={{
-                        p: 1.5,
-                        bgcolor: selectedStyle?.id === style.id ? 'primary.lighter' : 'grey.50',
-                        borderRadius: 1,
-                        border: 1,
-                        borderColor: selectedStyle?.id === style.id ? 'primary.main' : 'grey.200',
-                        transition: 'all 0.3s ease',
+                        bgcolor: selectedStyle?.id === style.id ? alpha(theme.palette.primary.main, 0.1) : 'grey.50',
+                        borderColor: selectedStyle?.id === style.id ? 'primary.main' : 'grey.300',
                       }}
                     >
                       <Typography
                         variant="caption"
+                        className={styles.promptText}
                         sx={{
                           color: selectedStyle?.id === style.id ? 'primary.main' : 'text.secondary',
-                          fontWeight: 500,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 0.5,
-                          mb: 0.5,
                         }}
                       >
-                        <Iconify icon="solar:chat-round-bold" width={12} />
-                        Prompt:
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: selectedStyle?.id === style.id ? 'primary.dark' : 'text.primary',
-                          fontSize: '0.75rem',
-                          lineHeight: 1.3,
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          fontFamily: 'monospace',
-                        }}
-                      >
-                        {style.prompt}
+                        {style.prompt.split(',').slice(0, 3).join(', ')}...
                       </Typography>
                     </Box>
                   </CardContent>
                 </CardActionArea>
               </Card>
-            </Grid>
+            </Box>
           ))}
-        </Grid>
       </Box>
 
-      {/* Custom Prompt */}
-      <Box sx={{ mt: 4 }}>
-        <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-          Hoặc Tùy Chỉnh Prompt
-        </Typography>
-
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Mô tả chi tiết background bạn muốn tạo bằng tiếng Anh
-        </Typography>
+      {/* Ultra Compact Custom Prompt */}
+      <Box
+        sx={{
+          mt: 3,
+          p: 2,
+          bgcolor: alpha(theme.palette.primary.main, 0.03),
+          borderRadius: 2,
+          border: 1,
+          borderColor: alpha(theme.palette.primary.main, 0.1),
+        }}
+      >
+        <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1.5 }}>
+          <Box
+            sx={{
+              width: 24,
+              height: 24,
+              borderRadius: 1.5,
+              bgcolor: 'primary.main',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Iconify icon="solar:pen-bold" width={12} sx={{ color: 'white' }} />
+          </Box>
+          <Typography variant="subtitle2" fontWeight={600} sx={{ fontSize: '0.875rem' }}>
+            ✏️ Tự Tạo Mô Tả
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+            (Tiếng Anh)
+          </Typography>
+        </Stack>
 
         <TextField
           ref={textFieldRef}
           fullWidth
           multiline
-          rows={4}
-          placeholder="Ví dụ: modern minimalist studio background with soft lighting, clean white backdrop, professional photography setup..."
+          rows={2.5}
+          placeholder="golden sand beach, soft sunlight, crystal water..."
           value={localPrompt}
           onChange={handleCustomPromptChange}
           disabled={disabled}
           error={Boolean(promptError)}
-          helperText={promptError || `${localPrompt.length}/500 ký tự`}
-          InputProps={{
-            endAdornment: localPrompt && (
-              <InputAdornment position="end">
-                <Tooltip title="Xóa prompt">
+          helperText={promptError || `${localPrompt.length}/500`}
+          slotProps={{
+            input: {
+              endAdornment: localPrompt && (
+                <InputAdornment position="end">
                   <IconButton
                     onClick={handleClearPrompt}
                     disabled={disabled}
                     size="small"
-                    sx={{ mr: 1 }}
+                    sx={{ mr: -0.5 }}
                   >
-                    <Iconify icon="solar:close-circle-bold" />
+                    <Iconify icon="solar:close-circle-bold" width={16} />
                   </IconButton>
-                </Tooltip>
-              </InputAdornment>
-            ),
+                </InputAdornment>
+              ),
+            },
           }}
           sx={{
-            mb: 2,
+            mb: 1.5,
             '& .MuiOutlinedInput-root': {
+              borderRadius: 2,
+              bgcolor: 'background.paper',
+              fontSize: '0.875rem',
               '& textarea': {
                 resize: 'vertical',
+                fontSize: '0.875rem',
               },
               '&:hover': {
                 '& .MuiOutlinedInput-notchedOutline': {
                   borderColor: 'primary.main',
                 },
               },
-              '&.Mui-focused': {
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderWidth: 2,
-                },
-              },
+            },
+            '& .MuiFormHelperText-root': {
+              fontSize: '0.7rem',
+              margin: '4px 0 0 0',
             },
           }}
         />
 
-        <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+        {/* Compact Action Button */}
+        {localPrompt.trim() && (
           <Button
             variant="contained"
+            fullWidth
             onClick={handleCustomPromptSubmit}
-            disabled={disabled || !localPrompt.trim() || Boolean(promptError)}
+            disabled={disabled || Boolean(promptError)}
             startIcon={<Iconify icon="solar:magic-stick-3-bold" />}
             sx={{
-              flex: 1,
-              py: 1.5,
+              py: 1.2,
+              mb: 1.5,
               fontWeight: 600,
+              borderRadius: 2,
+              fontSize: '0.875rem',
+              height: 40,
             }}
           >
-            Sử Dụng Custom Prompt
+            ✨ Sử Dụng Mô Tả Này
           </Button>
+        )}
 
-          {localPrompt && (
-            <Tooltip title="Xóa tất cả">
-              <IconButton
-                onClick={handleClearPrompt}
-                disabled={disabled}
-                color="error"
-                sx={{
-                  border: 1,
-                  borderColor: 'error.main',
-                  '&:hover': {
-                    bgcolor: 'error.lighter',
-                  },
-                }}
-              >
-                <Iconify icon="solar:trash-bin-minimalistic-bold" />
-              </IconButton>
-            </Tooltip>
-          )}
-        </Box>
-
-        {/* Tips */}
-        <Box sx={{
-          p: 3,
-          bgcolor: 'info.lighter',
-          borderRadius: 2,
-          border: 1,
-          borderColor: 'info.main',
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-            <Iconify icon="solar:lightbulb-bolt-bold" color="info.main" width={20} />
-            <Typography variant="subtitle2" sx={{ color: 'info.main', fontWeight: 600 }}>
-              Tips cho prompt hiệu quả
-            </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {[
-              'Mô tả rõ ràng về màu sắc, ánh sáng, chất liệu',
-              'Sử dụng từ khóa như "professional", "clean", "modern"',
-              'Tránh các từ phủ định, thay vào đó dùng từ tích cực',
-              'Ví dụ: "bright white studio background" thay vì "not dark background"'
-            ].map((tip, index) => (
-              <Box key={index} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                <Box
-                  sx={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    bgcolor: 'info.main',
-                    mt: 0.75,
-                    flexShrink: 0,
-                  }}
-                />
-                <Typography variant="body2" color="info.dark">
-                  {tip}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
+        {/* Ultra Compact Tips */}
+        <Box
+          sx={{
+            p: 1.5,
+            bgcolor: alpha(theme.palette.info.main, 0.03),
+            borderRadius: 1.5,
+            border: 0.5,
+            borderColor: alpha(theme.palette.info.main, 0.15),
+          }}
+        >
+          <Typography variant="caption" sx={{ color: 'info.main', fontWeight: 600, mb: 0.75, display: 'block', fontSize: '0.7rem' }}>
+            💡 Tips: Dùng từ khóa đơn giản như "golden sand", "soft lighting", "crystal water"
+          </Typography>
         </Box>
       </Box>
 
-      {/* Prompt Status Display */}
+      {/* Ultra Compact Status Display */}
       {(selectedStyle || localPrompt?.trim()) && (
-        <Fade in={true}>
-          <Card sx={{
-            mt: 3,
-            bgcolor: selectedStyle ? 'success.lighter' : 'primary.lighter',
-            border: 2,
-            borderColor: selectedStyle ? 'success.main' : 'primary.main',
-            borderRadius: 2,
-            transition: 'all 0.3s ease',
-          }}>
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 40,
-                    height: 40,
-                    borderRadius: '50%',
-                    bgcolor: selectedStyle ? 'success.main' : 'primary.main',
-                    color: 'white',
-                    flexShrink: 0,
-                  }}
-                >
-                  <Iconify
-                    icon={selectedStyle ? "solar:check-circle-bold" : "solar:pen-bold"}
-                    width={20}
-                  />
-                </Box>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography variant="subtitle1" sx={{
-                    mb: 1,
-                    fontWeight: 600,
-                    color: selectedStyle ? 'success.main' : 'primary.main',
-                  }}>
-                    {selectedStyle ? `Đã chọn: ${selectedStyle.name}` : 'Custom Prompt'}
-                  </Typography>
-                  <Box
-                    sx={{
-                      p: 2,
-                      bgcolor: 'background.paper',
-                      borderRadius: 1,
-                      border: 1,
-                      borderColor: 'divider',
-                    }}
-                  >
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontFamily: 'monospace',
-                        fontSize: '0.875rem',
-                        lineHeight: 1.5,
-                        color: 'text.primary',
-                        wordBreak: 'break-word',
-                      }}
-                    >
-                      {localPrompt || selectedStyle?.prompt || ''}
-                    </Typography>
-                  </Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                    {(localPrompt || selectedStyle?.prompt || '').length} ký tự
-                  </Typography>
-                </Box>
+        <Fade in>
+          <Box
+            sx={{
+              mt: 2,
+              p: 1.5,
+              bgcolor: selectedStyle ? alpha(theme.palette.success.main, 0.08) : alpha(theme.palette.primary.main, 0.08),
+              border: 1,
+              borderColor: selectedStyle ? alpha(theme.palette.success.main, 0.3) : alpha(theme.palette.primary.main, 0.3),
+              borderRadius: 2,
+            }}
+          >
+            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+              <Box
+                sx={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: '50%',
+                  bgcolor: selectedStyle ? 'success.main' : 'primary.main',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Iconify
+                  icon={selectedStyle ? 'solar:check-circle-bold' : 'solar:pen-bold'}
+                  width={12}
+                  sx={{ color: 'white' }}
+                />
               </Box>
-            </CardContent>
-          </Card>
+              <Typography
+                variant="caption"
+                fontWeight={600}
+                color={selectedStyle ? 'success.main' : 'primary.main'}
+                sx={{ fontSize: '0.75rem' }}
+              >
+                {selectedStyle ? `✓ ${selectedStyle.name}` : '✏️ Custom'}
+              </Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ fontSize: '0.65rem', ml: 'auto' }}
+              >
+                {(localPrompt || selectedStyle?.prompt || '').length} chars
+              </Typography>
+            </Stack>
+            <Typography
+              variant="caption"
+              sx={{
+                fontSize: '0.7rem',
+                lineHeight: 1.4,
+                color: 'text.secondary',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }}
+            >
+              {(localPrompt || selectedStyle?.prompt || '').substring(0, 100)}...
+            </Typography>
+          </Box>
         </Fade>
       )}
 
-      {/* No Selection Display */}
+      {/* Minimal No Selection Display */}
       {!selectedStyle && !localPrompt?.trim() && (
-        <Fade in={true}>
-          <Card sx={{
-            mt: 3,
-            bgcolor: 'grey.50',
-            border: 2,
+        <Box
+          sx={{
+            mt: 2,
+            p: 2,
+            bgcolor: alpha(theme.palette.grey[100], 0.5),
+            border: 0.5,
             borderColor: 'grey.300',
             borderStyle: 'dashed',
             borderRadius: 2,
-          }}>
-            <CardContent sx={{ p: 4 }}>
-              <Box sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 2,
-                textAlign: 'center',
-              }}>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 60,
-                    height: 60,
-                    borderRadius: '50%',
-                    bgcolor: 'grey.200',
-                    color: 'grey.600',
-                  }}
-                >
-                  <Iconify icon="solar:info-circle-bold" width={30} />
-                </Box>
-                <Box>
-                  <Typography variant="h6" color="text.primary" sx={{ mb: 1, fontWeight: 600 }}>
-                    Chưa chọn prompt
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Vui lòng chọn một style có sẵn hoặc nhập custom prompt để tiếp tục
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Fade>
+            textAlign: 'center',
+          }}
+        >
+          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+            👆 Chọn style hoặc viết mô tả để tiếp tục
+          </Typography>
+        </Box>
       )}
     </Box>
   );

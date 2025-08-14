@@ -6,26 +6,26 @@ import {
   Box,
   Card,
   Grid,
-  Button,
-  Container,
-  Typography,
-  CardContent,
-  CardHeader,
-  TextField,
-  Switch,
-  FormControlLabel,
-  Divider,
-  Alert,
   Chip,
+  Alert,
+  Button,
+  Switch,
+  Divider,
+  Container,
+  TextField,
+  Typography,
+  CardHeader,
+  CardContent,
+  FormControlLabel,
 } from '@mui/material';
 
 import { paths } from 'src/routes/paths';
 
-import { useAuthContext } from 'src/auth/hooks';
-
 import { toast } from 'src/components/snackbar';
 import { Iconify } from 'src/components/iconify';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
+
+import { useAuthContext } from 'src/auth/hooks';
 
 // ----------------------------------------------------------------------
 
@@ -46,7 +46,7 @@ export function BackgroundGeneratorSettingsView() {
   });
 
   const handleSettingChange = (key, value) => {
-    setSettings(prev => ({
+    setSettings((prev) => ({
       ...prev,
       [key]: value,
     }));
@@ -63,22 +63,22 @@ export function BackgroundGeneratorSettingsView() {
 
   const handleTestConnection = async (service) => {
     try {
-      setApiStatus(prev => ({
+      setApiStatus((prev) => ({
         ...prev,
         [service]: 'testing',
       }));
 
       // TODO: Test API connection
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      setApiStatus(prev => ({
+      setApiStatus((prev) => ({
         ...prev,
         [service]: 'connected',
       }));
 
       toast.success(`Kết nối ${service} thành công!`);
     } catch (error) {
-      setApiStatus(prev => ({
+      setApiStatus((prev) => ({
         ...prev,
         [service]: 'error',
       }));
@@ -88,19 +88,27 @@ export function BackgroundGeneratorSettingsView() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'connected': return 'success';
-      case 'testing': return 'warning';
-      case 'error': return 'error';
-      default: return 'default';
+      case 'connected':
+        return 'success';
+      case 'testing':
+        return 'warning';
+      case 'error':
+        return 'error';
+      default:
+        return 'default';
     }
   };
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'connected': return 'Đã kết nối';
-      case 'testing': return 'Đang kiểm tra';
-      case 'error': return 'Lỗi kết nối';
-      default: return 'Chưa kết nối';
+      case 'connected':
+        return 'Đã kết nối';
+      case 'testing':
+        return 'Đang kiểm tra';
+      case 'error':
+        return 'Lỗi kết nối';
+      default:
+        return 'Chưa kết nối';
     }
   };
 
@@ -125,12 +133,7 @@ export function BackgroundGeneratorSettingsView() {
             />
             <CardContent>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <TextField
-                  label="Email"
-                  value={user?.email || ''}
-                  disabled
-                  fullWidth
-                />
+                <TextField label="Email" value={user?.email || ''} disabled fullWidth />
                 <TextField
                   label="Tên hiển thị"
                   value={user?.user_metadata?.full_name || ''}
@@ -139,7 +142,9 @@ export function BackgroundGeneratorSettingsView() {
                 />
                 <TextField
                   label="Ngày tham gia"
-                  value={user?.created_at ? new Date(user.created_at).toLocaleDateString('vi-VN') : ''}
+                  value={
+                    user?.created_at ? new Date(user.created_at).toLocaleDateString('vi-VN') : ''
+                  }
                   disabled
                   fullWidth
                 />
@@ -158,7 +163,9 @@ export function BackgroundGeneratorSettingsView() {
             <CardContent>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {/* Runware API */}
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box
+                  sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                >
                   <Box>
                     <Typography variant="subtitle2">Runware API</Typography>
                     <Typography variant="caption" color="text.secondary">
@@ -185,7 +192,9 @@ export function BackgroundGeneratorSettingsView() {
                 <Divider />
 
                 {/* Supabase API */}
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box
+                  sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                >
                   <Box>
                     <Typography variant="subtitle2">Supabase</Typography>
                     <Typography variant="caption" color="text.secondary">
@@ -214,7 +223,7 @@ export function BackgroundGeneratorSettingsView() {
         </Grid>
 
         {/* App Settings */}
-        <Grid item size={{xs: 12}}>
+        <Grid item size={{ xs: 12 }}>
           <Card>
             <CardHeader
               title="Cài Đặt Ứng Dụng"
@@ -227,7 +236,7 @@ export function BackgroundGeneratorSettingsView() {
                   <Typography variant="h6" sx={{ mb: 2 }}>
                     Xử Lý Hình Ảnh
                   </Typography>
-                  
+
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <FormControlLabel
                       control={
@@ -238,7 +247,7 @@ export function BackgroundGeneratorSettingsView() {
                       }
                       label="Tự động lưu kết quả"
                     />
-                    
+
                     <FormControlLabel
                       control={
                         <Switch
@@ -265,13 +274,15 @@ export function BackgroundGeneratorSettingsView() {
                   <Typography variant="h6" sx={{ mb: 2 }}>
                     Thông Báo
                   </Typography>
-                  
+
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <FormControlLabel
                       control={
                         <Switch
                           checked={settings.emailNotifications}
-                          onChange={(e) => handleSettingChange('emailNotifications', e.target.checked)}
+                          onChange={(e) =>
+                            handleSettingChange('emailNotifications', e.target.checked)
+                          }
                         />
                       }
                       label="Thông báo qua email"
@@ -303,7 +314,7 @@ export function BackgroundGeneratorSettingsView() {
         </Grid>
 
         {/* Usage Statistics */}
-        <Grid item size={{xs: 12}}>
+        <Grid item size={{ xs: 12 }}>
           <Card>
             <CardHeader
               title="Thống Kê Sử Dụng"

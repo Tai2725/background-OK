@@ -3,8 +3,8 @@
 import { useState } from 'react';
 
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import Alert from '@mui/material/Alert';
+import Button from '@mui/material/Button';
 
 import { paths } from 'src/routes/paths';
 
@@ -12,8 +12,8 @@ import { EmailInboxIcon } from 'src/assets/icons';
 
 import { getErrorMessage } from '../../utils';
 import { FormHead } from '../../components/form-head';
-import { FormReturnLink } from '../../components/form-return-link';
 import { resendVerificationEmail } from '../../context/supabase';
+import { FormReturnLink } from '../../components/form-return-link';
 
 // ----------------------------------------------------------------------
 

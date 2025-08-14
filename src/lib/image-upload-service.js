@@ -57,9 +57,7 @@ export class ImageUploadService {
       }
 
       // Get public URL
-      const { data: urlData } = supabase.storage
-        .from(this.BUCKETS.IMAGES)
-        .getPublicUrl(filePath);
+      const { data: urlData } = supabase.storage.from(this.BUCKETS.IMAGES).getPublicUrl(filePath);
 
       // Save to database
       const imageRecord = await this.saveImageRecord({
@@ -91,6 +89,151 @@ export class ImageUploadService {
   }
 
   /**
+   * Helper function: Process image result from Runware API
+   * Automatically downloads and uploads to Supabase, updates database, returns preview URL
+   * @param {Object} runwareResult - Result from Runware API
+   * @param {string} userId - ID của user
+   * @param {string} imageId - ID của record hình ảnh gốc
+   * @param {string} type - Loại hình ảnh (mask, final)
+   * @returns {Promise<Object>} - { previewUrl, supabaseUrl, originalUrl }
+   */
+  static async processRunwareResult(runwareResult, userId, imageId, type) {
+    const originalUrl = runwareResult.data.imageUrl || runwareResult.data.imageURL;
+
+    try {
+      // Download and upload to Supabase
+      const uploadResult = await this.downloadAndUploadFromRunware(originalUrl, userId, imageId, type);
+
+      // Update database
+      const updateData = {
+        [`${type}_url`]: originalUrl, // Original URL for reference
+        status: type === 'mask' ? 'mask_generated' : 'completed',
+      };
+
+      if (uploadResult.success) {
+        updateData[`${type}_supabase_url`] = uploadResult.data.url;
+      }
+
+      await this.updateImageRecord(imageId, updateData);
+
+      // Return preview URL (prefer Supabase, fallback to original)
+      const previewUrl = uploadResult.success
+        ? uploadResult.data.url
+        : (uploadResult.fallbackUrl || originalUrl);
+
+      return {
+        success: true,
+        previewUrl,
+        supabaseUrl: uploadResult.success ? uploadResult.data.url : null,
+        originalUrl,
+      };
+    } catch (error) {
+      console.error('Process Runware result error:', error);
+      return {
+        success: false,
+        previewUrl: originalUrl, // Fallback to original
+        supabaseUrl: null,
+        originalUrl,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Download ảnh từ Runware và upload lên Supabase Storage
+   * Mặc định: Tất cả URL từ Runware đều được download và upload lên Supabase
+   * @param {string} imageUrl - URL ảnh từ Runware API response
+   * @param {string} userId - ID của user
+   * @param {string} imageId - ID của record hình ảnh gốc
+   * @param {string} type - Loại hình ảnh (mask, background_removed, final)
+   * @returns {Promise<Object>} - Kết quả upload với Supabase URL
+   */
+  static async downloadAndUploadFromRunware(imageUrl, userId, imageId, type) {
+    console.log('🔄 [SUPABASE_UPLOAD] Starting download and upload process:', {
+      imageUrl: imageUrl?.substring(0, 50) + '...',
+      userId,
+      imageId,
+      type,
+    });
+
+    try {
+      if (!imageUrl || !userId || !imageId || !type) {
+        const error = 'Tất cả tham số đều bắt buộc';
+        console.error('❌ [SUPABASE_UPLOAD] Missing parameters:', {
+          imageUrl: !!imageUrl,
+          userId: !!userId,
+          imageId: !!imageId,
+          type: !!type,
+        });
+        throw new Error(error);
+      }
+
+      console.log('📥 [SUPABASE_UPLOAD] Downloading image from URL...');
+
+      // Download image from any URL (Runware or other)
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        const error = `Failed to download image: ${response.status} ${response.statusText}`;
+        console.error('❌ [SUPABASE_UPLOAD] Download failed:', error);
+        throw new Error(error);
+      }
+
+      const imageBlob = await response.blob();
+      console.log('✅ [SUPABASE_UPLOAD] Image downloaded successfully:', {
+        size: imageBlob.size,
+        type: imageBlob.type,
+      });
+
+      // Validate it's an image
+      if (!imageBlob.type.startsWith('image/')) {
+        const error = `Downloaded content is not an image: ${imageBlob.type}`;
+        console.error('❌ [SUPABASE_UPLOAD] Invalid content type:', error);
+        throw new Error(error);
+      }
+
+      console.log('📤 [SUPABASE_UPLOAD] Uploading to Supabase Storage...');
+
+      // Upload to Supabase using existing method
+      const uploadResult = await this.uploadProcessedImage(imageBlob, userId, imageId, type);
+
+      if (!uploadResult.success) {
+        console.error('❌ [SUPABASE_UPLOAD] Upload to Supabase failed:', uploadResult.error);
+        throw new Error(uploadResult.error);
+      }
+
+      console.log('🎉 [SUPABASE_UPLOAD] Successfully uploaded to Supabase:', {
+        url: uploadResult.data.url?.substring(0, 50) + '...',
+        path: uploadResult.data.path,
+        fileName: uploadResult.data.fileName,
+      });
+
+      return {
+        success: true,
+        data: {
+          ...uploadResult.data,
+          originalUrl: imageUrl, // Keep original URL for reference
+        },
+      };
+    } catch (error) {
+      console.error('💥 [SUPABASE_UPLOAD] Download and upload error:', {
+        error: error.message,
+        stack: error.stack,
+        imageUrl: imageUrl?.substring(0, 50) + '...',
+        userId,
+        imageId,
+        type,
+      });
+
+      // Return fallback with original URL if upload fails
+      return {
+        success: false,
+        error: error.message,
+        fallbackUrl: imageUrl,
+      };
+    }
+  }
+
+  /**
    * Upload hình ảnh đã xử lý lên Supabase Storage
    * @param {Blob|File} imageBlob - Blob hoặc File hình ảnh
    * @param {string} userId - ID của user
@@ -99,15 +242,36 @@ export class ImageUploadService {
    * @returns {Promise<Object>} - Kết quả upload
    */
   static async uploadProcessedImage(imageBlob, userId, imageId, type) {
+    console.log('📤 [UPLOAD_PROCESSED] Starting upload to Supabase Storage:', {
+      blobSize: imageBlob?.size,
+      blobType: imageBlob?.type,
+      userId,
+      imageId,
+      type,
+    });
+
     try {
       if (!imageBlob || !userId || !imageId || !type) {
-        throw new Error('Tất cả tham số đều bắt buộc');
+        const error = 'Tất cả tham số đều bắt buộc';
+        console.error('❌ [UPLOAD_PROCESSED] Missing parameters:', {
+          imageBlob: !!imageBlob,
+          userId: !!userId,
+          imageId: !!imageId,
+          type: !!type,
+        });
+        throw new Error(error);
       }
 
       // Generate filename
       const timestamp = Date.now();
       const fileName = `${type}_${timestamp}.png`;
       const filePath = `${userId}/processed/${imageId}/${fileName}`;
+
+      console.log('📁 [UPLOAD_PROCESSED] Generated file path:', {
+        fileName,
+        filePath,
+        bucket: this.BUCKETS.PROCESSED_IMAGES,
+      });
 
       // Upload to Supabase Storage
       const { data, error } = await supabase.storage
@@ -119,20 +283,36 @@ export class ImageUploadService {
         });
 
       if (error) {
-        console.error('Supabase upload error:', error);
+        console.error('❌ [UPLOAD_PROCESSED] Supabase storage upload error:', {
+          error: error.message,
+          code: error.statusCode,
+          details: error,
+        });
         throw new Error(`Lỗi upload: ${error.message}`);
       }
+
+      console.log('✅ [UPLOAD_PROCESSED] File uploaded to storage successfully:', data);
 
       // Get public URL
       const { data: urlData } = supabase.storage
         .from(this.BUCKETS.PROCESSED_IMAGES)
         .getPublicUrl(filePath);
 
+      console.log('🔗 [UPLOAD_PROCESSED] Generated public URL:', urlData.publicUrl);
+
       // Update database record
       const updateField = `${type}_supabase_url`;
-      await this.updateImageRecord(imageId, {
+      console.log('💾 [UPLOAD_PROCESSED] Updating database record:', {
+        imageId,
+        updateField,
+        url: urlData.publicUrl,
+      });
+
+      const updateResult = await this.updateImageRecord(imageId, {
         [updateField]: urlData.publicUrl,
       });
+
+      console.log('✅ [UPLOAD_PROCESSED] Database updated successfully:', updateResult);
 
       return {
         success: true,
@@ -143,7 +323,13 @@ export class ImageUploadService {
         },
       };
     } catch (error) {
-      console.error('Upload processed image error:', error);
+      console.error('💥 [UPLOAD_PROCESSED] Upload processed image error:', {
+        error: error.message,
+        stack: error.stack,
+        userId,
+        imageId,
+        type,
+      });
       return {
         success: false,
         error: error.message,
@@ -182,6 +368,11 @@ export class ImageUploadService {
    * @returns {Promise<Object>} - Record đã cập nhật
    */
   static async updateImageRecord(imageId, updateData) {
+    console.log('💾 [UPDATE_RECORD] Updating database record:', {
+      imageId,
+      updateData,
+    });
+
     const { data, error } = await supabase
       .from('processed_images')
       .update({
@@ -193,10 +384,17 @@ export class ImageUploadService {
       .single();
 
     if (error) {
-      console.error('Database update error:', error);
+      console.error('❌ [UPDATE_RECORD] Database update error:', {
+        error: error.message,
+        code: error.code,
+        details: error,
+        imageId,
+        updateData,
+      });
       throw new Error(`Lỗi cập nhật database: ${error.message}`);
     }
 
+    console.log('✅ [UPDATE_RECORD] Database record updated successfully:', data);
     return data;
   }
 
@@ -257,7 +455,7 @@ export class ImageUploadService {
 
       // Delete files from storage
       const filesToDelete = [];
-      
+
       // Extract file paths from URLs
       if (imageRecord.original_url) {
         const originalPath = this.extractPathFromUrl(imageRecord.original_url);
@@ -267,12 +465,12 @@ export class ImageUploadService {
       // Add processed image paths
       const processedFields = [
         'background_removed_supabase_url',
-        'upscaled_supabase_url', 
+        'upscaled_supabase_url',
         'final_supabase_url',
-        'enhanced_supabase_url'
+        'enhanced_supabase_url',
       ];
 
-      processedFields.forEach(field => {
+      processedFields.forEach((field) => {
         if (imageRecord[field]) {
           const path = this.extractPathFromUrl(imageRecord[field]);
           if (path) filesToDelete.push({ bucket: this.BUCKETS.PROCESSED_IMAGES, path });
@@ -317,7 +515,7 @@ export class ImageUploadService {
     try {
       const urlObj = new URL(url);
       const pathParts = urlObj.pathname.split('/');
-      const objectIndex = pathParts.findIndex(part => part === 'object');
+      const objectIndex = pathParts.findIndex((part) => part === 'object');
       if (objectIndex !== -1 && pathParts[objectIndex + 2]) {
         return pathParts.slice(objectIndex + 2).join('/');
       }

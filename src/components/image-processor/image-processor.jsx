@@ -1,24 +1,26 @@
+'use client';
+
 import { useState, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
+import Grid from '@mui/material/Grid';
+import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
-import Typography from '@mui/material/Typography';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
+import Divider from '@mui/material/Divider';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
-import Alert from '@mui/material/Alert';
-import Divider from '@mui/material/Divider';
-import Grid from '@mui/material/Grid';
+import Typography from '@mui/material/Typography';
+import InputLabel from '@mui/material/InputLabel';
+import FormControl from '@mui/material/FormControl';
 
 import { RunwareService } from 'src/lib/runware-service';
 
 import { Iconify } from '../iconify';
+import { ResultGallery } from './result-gallery';
 import { ImageUploadZone } from './image-upload-zone';
 import { ProcessingStatus } from './processing-status';
-import { ResultGallery } from './result-gallery';
 
 // ----------------------------------------------------------------------
 
@@ -94,7 +96,7 @@ export function ImageProcessor() {
       }
 
       let filesToProcess = selectedFiles;
-      
+
       // For text-to-image, create a dummy file array
       if (operation === 'generateImage') {
         filesToProcess = [{ name: 'generated-image.png', prompt: textPrompt }];
@@ -123,7 +125,7 @@ export function ImageProcessor() {
         options,
         (progress) => {
           // Update task status based on progress
-          setTasks(prevTasks => 
+          setTasks((prevTasks) =>
             prevTasks.map((task, index) => {
               if (index === progress.completed - 1) {
                 return {
@@ -155,23 +157,22 @@ export function ImageProcessor() {
 
       // Update results
       const successfulResults = batchResults
-        .filter(result => result.success)
-        .map(result => ({
+        .filter((result) => result.success)
+        .map((result) => ({
           ...result.data,
           filename: result.filename,
           operation,
           cost: result.data?.cost,
         }));
 
-      setResults(prev => [...prev, ...successfulResults]);
-
+      setResults((prev) => [...prev, ...successfulResults]);
     } catch (err) {
       console.error('Processing error:', err);
       setError(err.message);
-      
+
       // Mark all tasks as error
-      setTasks(prevTasks => 
-        prevTasks.map(task => ({
+      setTasks((prevTasks) =>
+        prevTasks.map((task) => ({
           ...task,
           status: 'error',
           error: err.message,
@@ -201,13 +202,13 @@ export function ImageProcessor() {
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
-      } catch (error) {
-        console.error('Download error:', error);
+      } catch (downloadError) {
+        console.error('Download error:', downloadError);
       }
     }
   };
 
-  const selectedOperation = OPERATIONS.find(op => op.value === operation);
+  const selectedOperation = OPERATIONS.find((op) => op.value === operation);
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
@@ -320,7 +321,10 @@ export function ImageProcessor() {
               }
               startIcon={
                 isProcessing ? (
-                  <Iconify icon="solar:settings-bold" sx={{ animation: 'spin 1s linear infinite' }} />
+                  <Iconify
+                    icon="solar:settings-bold"
+                    sx={{ animation: 'spin 1s linear infinite' }}
+                  />
                 ) : (
                   <Iconify icon={selectedOperation?.icon} />
                 )
@@ -347,21 +351,14 @@ export function ImageProcessor() {
         {/* Right Panel - Status & Results */}
         <Grid item size={{ xs: 12, md: 6 }}>
           {/* Processing Status */}
-          <ProcessingStatus
-            tasks={tasks}
-            onRetry={handleRetry}
-            onDownloadAll={handleDownloadAll}
-          />
+          <ProcessingStatus tasks={tasks} onRetry={handleRetry} onDownloadAll={handleDownloadAll} />
 
           {results.length > 0 && (
             <>
               <Divider sx={{ my: 3 }} />
-              
+
               {/* Results Gallery */}
-              <ResultGallery
-                results={results}
-                onDownloadAll={handleDownloadAll}
-              />
+              <ResultGallery results={results} onDownloadAll={handleDownloadAll} />
             </>
           )}
         </Grid>

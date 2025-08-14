@@ -1,19 +1,22 @@
+'use client';
+
 import { useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
-import Button from '@mui/material/Button';
-import Typography from '@mui/material/Typography';
-import IconButton from '@mui/material/IconButton';
-import Dialog from '@mui/material/Dialog';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
 import Grid from '@mui/material/Grid';
 import Chip from '@mui/material/Chip';
+import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
 import Tooltip from '@mui/material/Tooltip';
+import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
 
-import { Iconify } from '../iconify';
 import { Image } from '../image';
+import { Iconify } from '../iconify';
+import { ImageZoomModal } from '../image-zoom-modal';
 
 // ----------------------------------------------------------------------
 
@@ -27,6 +30,7 @@ export function ResultGallery({
 }) {
   const [selectedResult, setSelectedResult] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [zoomModal, setZoomModal] = useState({ open: false, imageUrl: '', alt: '' });
 
   const handlePreview = (result) => {
     setSelectedResult(result);
@@ -36,6 +40,14 @@ export function ResultGallery({
   const handleClosePreview = () => {
     setPreviewOpen(false);
     setSelectedResult(null);
+  };
+
+  const handleOpenZoom = (imageUrl, alt) => {
+    setZoomModal({ open: true, imageUrl, alt });
+  };
+
+  const handleCloseZoom = () => {
+    setZoomModal({ open: false, imageUrl: '', alt: '' });
   };
 
   const handleDownload = async (result) => {
@@ -50,7 +62,7 @@ export function ResultGallery({
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
+
       if (onDownload) {
         onDownload(result);
       }
@@ -84,7 +96,7 @@ export function ResultGallery({
         console.error('Copy to clipboard error:', error);
       }
     }
-    
+
     if (onShare) {
       onShare(result);
     }
@@ -119,10 +131,8 @@ export function ResultGallery({
           mb: 3,
         }}
       >
-        <Typography variant="h6">
-          Kết quả xử lý ({results.length})
-        </Typography>
-        
+        <Typography variant="h6">Kết quả xử lý ({results.length})</Typography>
+
         {results.length > 0 && (
           <Button
             variant="contained"
@@ -182,10 +192,27 @@ export function ResultGallery({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    gap: 1,
                     opacity: 0,
                     transition: 'opacity 0.3s ease',
                   }}
                 >
+                  <IconButton
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenZoom(result.imageURL, result.filename);
+                    }}
+                    sx={{
+                      color: 'white',
+                      bgcolor: 'rgba(255, 255, 255, 0.2)',
+                      '&:hover': {
+                        bgcolor: 'rgba(255, 255, 255, 0.3)',
+                      },
+                    }}
+                  >
+                    <Iconify icon="solar:magnifer-zoom-in-bold" />
+                  </IconButton>
+
                   <IconButton
                     sx={{
                       color: 'white',
@@ -231,7 +258,7 @@ export function ResultGallery({
                         color="primary"
                       />
                     )}
-                    
+
                     {result.cost && (
                       <Chip
                         label={`$${result.cost.toFixed(4)}`}
@@ -251,39 +278,26 @@ export function ResultGallery({
                   }}
                 >
                   <Tooltip title="Tải xuống">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDownload(result)}
-                    >
+                    <IconButton size="small" onClick={() => handleDownload(result)}>
                       <Iconify icon="solar:download-bold" />
                     </IconButton>
                   </Tooltip>
 
                   <Tooltip title="Chia sẻ">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleShare(result)}
-                    >
+                    <IconButton size="small" onClick={() => handleShare(result)}>
                       <Iconify icon="solar:share-bold" />
                     </IconButton>
                   </Tooltip>
 
                   <Tooltip title="Xem chi tiết">
-                    <IconButton
-                      size="small"
-                      onClick={() => handlePreview(result)}
-                    >
+                    <IconButton size="small" onClick={() => handlePreview(result)}>
                       <Iconify icon="solar:eye-bold" />
                     </IconButton>
                   </Tooltip>
 
                   {onDelete && (
                     <Tooltip title="Xóa">
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => onDelete(result)}
-                      >
+                      <IconButton size="small" color="error" onClick={() => onDelete(result)}>
                         <Iconify icon="solar:trash-bin-minimalistic-bold" />
                       </IconButton>
                     </Tooltip>
@@ -296,12 +310,7 @@ export function ResultGallery({
       </Grid>
 
       {/* Preview Dialog */}
-      <Dialog
-        open={previewOpen}
-        onClose={handleClosePreview}
-        maxWidth="md"
-        fullWidth
-      >
+      <Dialog open={previewOpen} onClose={handleClosePreview} maxWidth="md" fullWidth>
         <DialogContent sx={{ p: 0 }}>
           {selectedResult && (
             <Box>
@@ -336,13 +345,9 @@ export function ResultGallery({
 
                 <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
                   {selectedResult.operation && (
-                    <Chip
-                      label={selectedResult.operation}
-                      variant="outlined"
-                      color="primary"
-                    />
+                    <Chip label={selectedResult.operation} variant="outlined" color="primary" />
                   )}
-                  
+
                   {selectedResult.cost && (
                     <Chip
                       label={`Chi phí: $${selectedResult.cost.toFixed(4)}`}
@@ -363,10 +368,8 @@ export function ResultGallery({
         </DialogContent>
 
         <DialogActions>
-          <Button onClick={handleClosePreview}>
-            Đóng
-          </Button>
-          
+          <Button onClick={handleClosePreview}>Đóng</Button>
+
           {selectedResult && (
             <>
               <Button
@@ -375,7 +378,7 @@ export function ResultGallery({
               >
                 Chia sẻ
               </Button>
-              
+
               <Button
                 variant="contained"
                 onClick={() => handleDownload(selectedResult)}
@@ -387,6 +390,14 @@ export function ResultGallery({
           )}
         </DialogActions>
       </Dialog>
+
+      {/* Image Zoom Modal */}
+      <ImageZoomModal
+        open={zoomModal.open}
+        onClose={handleCloseZoom}
+        imageUrl={zoomModal.imageUrl}
+        alt={zoomModal.alt}
+      />
     </Box>
   );
 }

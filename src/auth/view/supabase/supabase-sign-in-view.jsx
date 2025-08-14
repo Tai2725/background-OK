@@ -24,7 +24,7 @@ import { Form, Field } from 'src/components/hook-form';
 import { useAuthContext } from '../../hooks';
 import { getErrorMessage } from '../../utils';
 import { FormHead } from '../../components/form-head';
-import { signInWithPassword, signInWithGoogle } from '../../context/supabase';
+import { signInWithGoogle, signInWithPassword } from '../../context/supabase';
 
 // ----------------------------------------------------------------------
 

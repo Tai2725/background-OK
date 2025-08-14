@@ -95,19 +95,24 @@ function BlockVariant({ typographyVariant }) {
   const [computedStyle, setComputedStyle] = useState(null);
 
   const handleUpdate = useCallback(() => {
-    if (typographyRef.current) {
+    if (typographyRef.current && typeof window !== 'undefined') {
       const resolvedStyle = getComputedStyle(typographyRef.current);
       setComputedStyle(resolvedStyle);
     }
   }, []);
 
   useEffect(() => {
-    handleUpdate();
-    window.addEventListener('resize', handleUpdate);
+    // Only run on client side
+    if (typeof window !== 'undefined') {
+      handleUpdate();
+      window.addEventListener('resize', handleUpdate);
 
-    return () => {
-      window.removeEventListener('resize', handleUpdate);
-    };
+      return () => {
+        window.removeEventListener('resize', handleUpdate);
+      };
+    }
+
+    return undefined;
   }, [handleUpdate]);
 
   const lineHeight =

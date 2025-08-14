@@ -5,6 +5,7 @@ import { CONFIG } from 'src/global-config';
 import { Label } from 'src/components/label';
 import { Iconify } from 'src/components/iconify';
 import { SvgColor } from 'src/components/svg-color';
+
 import { backgroundGeneratorDashboardNav } from './nav-config-background-generator';
 
 // ----------------------------------------------------------------------
@@ -51,9 +52,7 @@ export const navData = [
    */
   {
     subheader: 'AI Background Generator',
-    items: [
-      backgroundGeneratorDashboardNav,
-    ],
+    items: [backgroundGeneratorDashboardNav],
   },
 ];
 

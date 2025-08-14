@@ -1,27 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 import {
   Box,
-  Card,
-  Stack,
-  Button,
-  Typography,
-  CardContent,
-  CircularProgress,
-  Tabs,
   Tab,
-  IconButton,
-  Tooltip,
+  Card,
+  Tabs,
   Fade,
+  Chip,
+  Stack,
   Paper,
   alpha,
-  Chip,
+  Tooltip,
+  Typography,
+  IconButton,
+  CardContent,
+  CircularProgress,
+  Collapse,
+  useTheme,
+  ButtonBase,
 } from '@mui/material';
 
-import { Iconify } from 'src/components/iconify';
 import { Image } from 'src/components/image';
+import { Iconify } from 'src/components/iconify';
+import { ImageZoomModal } from 'src/components/image-zoom-modal';
 
 // ----------------------------------------------------------------------
 
@@ -49,11 +52,53 @@ export function ImagePreviewPanel({
   isProcessing,
   processingStep,
 }) {
+  const theme = useTheme();
   const [activeTab, setActiveTab] = useState(0);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [zoomModal, setZoomModal] = useState({ open: false, imageUrl: '', alt: '' });
 
   // Auto switch tabs based on processing progress
+  useEffect(() => {
+    // Auto switch to final result tab when background generation is complete
+    if (finalImageUrl) {
+      // Find the index of "Kết Quả" tab among available tabs
+      const availableTabsTemp = [
+        { label: 'Ảnh Gốc', available: Boolean(originalImage) },
+        { label: 'Đã Xóa BG', available: Boolean(removedBgImageUrl) },
+        { label: 'Kết Quả', available: Boolean(finalImageUrl) },
+      ].filter((tab) => tab.available);
+
+      const finalTabIndex = availableTabsTemp.findIndex((tab) => tab.label === 'Kết Quả');
+      if (finalTabIndex !== -1) {
+        setActiveTab(finalTabIndex);
+      }
+    }
+    // Auto switch to removed background tab when background removal is complete
+    else if (removedBgImageUrl && !finalImageUrl) {
+      const availableTabsTemp = [
+        { label: 'Ảnh Gốc', available: Boolean(originalImage) },
+        { label: 'Đã Xóa BG', available: Boolean(removedBgImageUrl) },
+        { label: 'Kết Quả', available: Boolean(finalImageUrl) },
+      ].filter((tab) => tab.available);
+
+      const removedBgTabIndex = availableTabsTemp.findIndex((tab) => tab.label === 'Đã Xóa BG');
+      if (removedBgTabIndex !== -1) {
+        setActiveTab(removedBgTabIndex);
+      }
+    }
+  }, [finalImageUrl, removedBgImageUrl, originalImage]);
+
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
+  };
+
+  // Zoom modal handlers
+  const handleOpenZoom = (imageUrl, alt) => {
+    setZoomModal({ open: true, imageUrl, alt });
+  };
+
+  const handleCloseZoom = () => {
+    setZoomModal({ open: false, imageUrl: '', alt: '' });
   };
 
   // Download image handler
@@ -102,99 +147,93 @@ export function ImagePreviewPanel({
     },
   ];
 
-  const availableTabs = tabs.filter(tab => tab.available);
+  const availableTabs = tabs.filter((tab) => tab.available);
 
   return (
-    <Card
+    <Paper
+      elevation={0}
       sx={{
-        height: 'fit-content',
-        minHeight: 600,
         borderRadius: 3,
-        boxShadow: (theme) => `0 8px 32px ${alpha(theme.palette.info.main, 0.08)}`,
-        border: (theme) => `1px solid ${alpha(theme.palette.info.main, 0.08)}`,
+        border: `1px solid ${alpha(theme.palette.grey[300], 0.5)}`,
         overflow: 'hidden',
+        bgcolor: 'background.paper',
       }}
     >
-      <CardContent sx={{ p: 0 }}>
-        {/* Header */}
-        <Box
-          sx={{
-            background: (theme) => `linear-gradient(135deg, ${theme.palette.info.main} 0%, ${theme.palette.info.dark} 100%)`,
-            p: 3,
-            color: 'white',
-          }}
-        >
-          <Stack direction="row" alignItems="center" spacing={2}>
+      {/* Compact Header với toggle */}
+      <Box
+        sx={{
+          p: 2,
+          bgcolor: alpha(theme.palette.info.main, 0.05),
+          borderBottom: `1px solid ${alpha(theme.palette.grey[300], 0.3)}`,
+        }}
+      >
+        <Stack direction="row" alignItems="center" justifyContent="space-between">
+          <Stack direction="row" alignItems="center" spacing={1.5}>
             <Box
               sx={{
+                width: 32,
+                height: 32,
+                borderRadius: 2,
+                bgcolor: 'info.main',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: 48,
-                height: 48,
-                borderRadius: '50%',
-                bgcolor: 'rgba(255, 255, 255, 0.2)',
-                backdropFilter: 'blur(10px)',
               }}
             >
-              <Iconify icon="solar:gallery-bold-duotone" width={24} />
+              <Iconify icon="solar:gallery-bold" width={16} sx={{ color: 'white' }} />
             </Box>
             <Box>
-              <Typography variant="h6" fontWeight={700}>
-                Xem Trước Kết Quả
+              <Typography variant="subtitle1" fontWeight={600} color="info.main">
+                Xem Trước
               </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                Theo dõi quá trình xử lý và xem kết quả
+              <Typography variant="caption" color="text.secondary">
+                {availableTabs.length} giai đoạn
               </Typography>
             </Box>
           </Stack>
-        </Box>
 
-        <Box sx={{ p: 3 }}>
-          {/* Processing Status */}
+          <IconButton
+            size="small"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            sx={{
+              bgcolor: alpha(theme.palette.info.main, 0.1),
+              '&:hover': { bgcolor: alpha(theme.palette.info.main, 0.2) },
+            }}
+          >
+            <Iconify
+              icon={isCollapsed ? 'solar:eye-bold' : 'solar:eye-closed-bold'}
+              width={16}
+              sx={{ color: 'info.main' }}
+            />
+          </IconButton>
+        </Stack>
+      </Box>
+
+      {/* Collapsible Content */}
+      <Collapse in={!isCollapsed}>
+        <Box sx={{ p: 2 }}>
+          {/* Compact Processing Status */}
           {isProcessing && (
-            <Fade in={true}>
-              <Paper
-                elevation={0}
+            <Fade in>
+              <Box
                 sx={{
-                  mb: 3,
-                  p: 3,
-                  background: (theme) => `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.1)} 0%, ${alpha(theme.palette.warning.light, 0.05)} 100%)`,
-                  border: 2,
-                  borderColor: 'warning.main',
-                  borderRadius: 3,
-                  position: 'relative',
-                  overflow: 'hidden',
+                  mb: 2,
+                  p: 2,
+                  bgcolor: alpha(theme.palette.warning.main, 0.1),
+                  borderRadius: 2,
+                  border: `1px solid ${alpha(theme.palette.warning.main, 0.2)}`,
                 }}
               >
-                {/* Animated Background */}
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    background: (theme) => `linear-gradient(45deg, transparent 30%, ${alpha(theme.palette.warning.main, 0.05)} 50%, transparent 70%)`,
-                    animation: 'shimmer 2s infinite',
-                    '@keyframes shimmer': {
-                      '0%': { transform: 'translateX(-100%)' },
-                      '100%': { transform: 'translateX(100%)' },
-                    },
-                  }}
-                />
-
-                <Stack direction="row" alignItems="center" spacing={2} sx={{ position: 'relative', zIndex: 1 }}>
+                <Stack direction="row" alignItems="center" spacing={1.5}>
                   <Box
                     sx={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: '50%',
+                      bgcolor: 'warning.main',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      width: 40,
-                      height: 40,
-                      borderRadius: '50%',
-                      bgcolor: 'warning.main',
-                      color: 'white',
                       animation: 'pulse 2s infinite',
                       '@keyframes pulse': {
                         '0%': { transform: 'scale(1)' },
@@ -203,188 +242,227 @@ export function ImagePreviewPanel({
                       },
                     }}
                   >
-                    <CircularProgress size={20} sx={{ color: 'white' }} />
+                    <CircularProgress size={12} sx={{ color: 'white' }} />
                   </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="subtitle1" fontWeight={600} color="warning.main">
-                      {processingStep}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Đang xử lý, vui lòng chờ...
-                    </Typography>
-                  </Box>
-                  <Chip
-                    label="Đang xử lý"
-                    size="small"
-                    color="warning"
-                    variant="filled"
-                    sx={{
-                      fontWeight: 600,
-                      borderRadius: 2,
-                      animation: 'blink 1.5s infinite',
-                      '@keyframes blink': {
-                        '0%, 50%': { opacity: 1 },
-                        '51%, 100%': { opacity: 0.7 },
-                      },
-                    }}
-                  />
+                  <Typography variant="body2" fontWeight={500} color="warning.dark">
+                    {processingStep}
+                  </Typography>
                 </Stack>
-              </Paper>
+              </Box>
             </Fade>
           )}
 
-          {/* Tabs */}
+          {/* Compact Tab Buttons */}
           {availableTabs.length > 0 && (
-            <Paper
-              elevation={0}
-              sx={{
-                mb: 3,
-                borderRadius: 2,
-                overflow: 'hidden',
-                border: 1,
-                borderColor: 'divider',
-              }}
-            >
-              <Tabs
-                value={Math.min(activeTab, availableTabs.length - 1)}
-                onChange={handleTabChange}
-                variant="fullWidth"
-                sx={{
-                  '& .MuiTabs-indicator': {
-                    height: 3,
-                    borderRadius: '3px 3px 0 0',
-                  },
-                }}
-              >
-                {availableTabs.map((tab, index) => (
-                  <Tab
-                    key={tab.label}
-                    label={tab.label}
-                    icon={<Iconify icon={tab.icon} width={20} />}
-                    iconPosition="start"
-                    sx={{
-                      minHeight: 56,
-                      fontSize: '0.875rem',
-                      fontWeight: 600,
-                      textTransform: 'none',
-                      '&.Mui-selected': {
-                        color: 'primary.main',
-                        fontWeight: 700,
-                      },
-                      '&:hover': {
-                        bgcolor: 'action.hover',
-                      },
-                    }}
-                  />
-                ))}
-              </Tabs>
-            </Paper>
-          )}
-
-          {/* Tab Panels */}
-        {availableTabs.map((tab, index) => (
-          <TabPanel key={tab.label} value={Math.min(activeTab, availableTabs.length - 1)} index={index}>
-            <Stack spacing={2}>
-              {/* Image Display */}
-              <Box
-                sx={{
-                  position: 'relative',
-                  width: '100%',
-                  height: 400,
-                  bgcolor: 'grey.100',
-                  borderRadius: 2,
-                  overflow: 'hidden',
-                  border: 1,
-                  borderColor: 'divider',
-                }}
-              >
-                {tab.imageUrl ? (
-                  <Image
-                    src={tab.imageUrl}
-                    alt={tab.label}
-                    sx={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'contain',
-                    }}
-                  />
-                ) : (
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      height: '100%',
-                      color: 'text.secondary',
-                    }}
-                  >
-                    <Stack alignItems="center" spacing={1}>
-                      <Iconify icon="solar:gallery-bold" width={48} />
-                      <Typography variant="body2">Chưa có hình ảnh</Typography>
-                    </Stack>
-                  </Box>
-                )}
-
-                {/* Download Button */}
-                {tab.imageUrl && (
-                  <Tooltip title="Tải xuống">
-                    <IconButton
-                      onClick={() => handleDownload(tab.imageUrl, tab.filename)}
-                      sx={{
-                        position: 'absolute',
-                        top: 8,
-                        right: 8,
-                        bgcolor: 'background.paper',
-                        boxShadow: 1,
-                        '&:hover': {
-                          bgcolor: 'background.paper',
-                          boxShadow: 2,
-                        },
-                      }}
-                    >
-                      <Iconify icon="solar:download-bold" width={20} />
-                    </IconButton>
-                  </Tooltip>
-                )}
-              </Box>
-
-              {/* Image Info */}
-              {tab.imageUrl && (
-                <Box
+            <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+              {availableTabs.map((tab, index) => (
+                <ButtonBase
+                  key={tab.label}
+                  onClick={() => setActiveTab(index)}
                   sx={{
-                    p: 2,
-                    bgcolor: 'grey.50',
-                    borderRadius: 1,
+                    flex: 1,
+                    p: 1.5,
+                    borderRadius: 2,
                     border: 1,
-                    borderColor: 'divider',
+                    borderColor: activeTab === index ? 'primary.main' : 'grey.300',
+                    bgcolor: activeTab === index ? 'primary.lighter' : 'transparent',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      bgcolor: alpha(theme.palette.primary.main, 0.1),
+                    },
                   }}
                 >
-                  <Typography variant="subtitle2" gutterBottom>
-                    📋 Thông Tin Ảnh
-                  </Typography>
-                  <Stack spacing={0.5}>
-                    <Typography variant="body2" color="text.secondary">
-                      <strong>Loại:</strong> {tab.label}
+                  <Stack alignItems="center" spacing={0.5}>
+                    <Iconify
+                      icon={tab.icon}
+                      width={16}
+                      sx={{
+                        color: activeTab === index ? 'primary.main' : 'text.secondary',
+                      }}
+                    />
+                    <Typography
+                      variant="caption"
+                      fontWeight={activeTab === index ? 600 : 500}
+                      color={activeTab === index ? 'primary.main' : 'text.secondary'}
+                    >
+                      {tab.label}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      <strong>Định dạng:</strong> PNG
-                    </Typography>
-                    {originalImage && tab.label === 'Ảnh Gốc' && (
-                      <>
-                        <Typography variant="body2" color="text.secondary">
-                          <strong>Kích thước:</strong> {(originalImage.size / 1024 / 1024).toFixed(2)} MB
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          <strong>Tên file:</strong> {originalImage.name}
-                        </Typography>
-                      </>
-                    )}
                   </Stack>
-                </Box>
-              )}
+                </ButtonBase>
+              ))}
             </Stack>
-          </TabPanel>
-        ))}
+          )}
+
+          {/* Compact Image Display */}
+          {availableTabs.length > 0 && (
+            <Box>
+              {availableTabs.map((tab, index) => (
+                <Box
+                  key={tab.label}
+                  sx={{
+                    display: activeTab === index ? 'block' : 'none',
+                  }}
+                >
+                  <Box
+                    sx={{
+                      position: 'relative',
+                      width: '100%',
+                      height: 300,
+                      bgcolor: 'grey.50',
+                      borderRadius: 2,
+                      overflow: 'hidden',
+                      border: 1,
+                      borderColor: 'grey.300',
+                    }}
+                  >
+                    {tab.imageUrl ? (
+                      <ButtonBase
+                        onClick={() => handleOpenZoom(tab.imageUrl, tab.label)}
+                        sx={{
+                          width: '100%',
+                          height: '100%',
+                          display: 'block',
+                          position: 'relative',
+                          '&:hover .zoom-overlay': {
+                            opacity: 1,
+                          },
+                        }}
+                      >
+                        <Image
+                          src={tab.imageUrl}
+                          alt={tab.label}
+                          sx={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'contain',
+                          }}
+                        />
+
+                        {/* Zoom Overlay */}
+                        <Box
+                          className="zoom-overlay"
+                          sx={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            bgcolor: alpha(theme.palette.common.black, 0.4),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            opacity: 0,
+                            transition: 'opacity 0.3s ease',
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: 48,
+                              height: 48,
+                              borderRadius: '50%',
+                              bgcolor: alpha(theme.palette.common.white, 0.9),
+                              color: theme.palette.text.primary,
+                            }}
+                          >
+                            <Iconify icon="solar:magnifer-zoom-in-bold" width={24} />
+                          </Box>
+                        </Box>
+                      </ButtonBase>
+                    ) : (
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          height: '100%',
+                          color: 'text.secondary',
+                        }}
+                      >
+                        <Stack alignItems="center" spacing={1}>
+                          <Iconify icon="solar:gallery-bold" width={32} />
+                          <Typography variant="caption">Chưa có hình ảnh</Typography>
+                        </Stack>
+                      </Box>
+                    )}
+
+                    {/* Action Buttons */}
+                    {tab.imageUrl && (
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        sx={{
+                          position: 'absolute',
+                          top: 8,
+                          right: 8,
+                        }}
+                      >
+                        <Tooltip title="Phóng to">
+                          <IconButton
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenZoom(tab.imageUrl, tab.label);
+                            }}
+                            sx={{
+                              bgcolor: alpha(theme.palette.background.paper, 0.9),
+                              backdropFilter: 'blur(4px)',
+                              '&:hover': {
+                                bgcolor: 'background.paper',
+                              },
+                            }}
+                          >
+                            <Iconify icon="solar:magnifer-zoom-in-bold" width={16} />
+                          </IconButton>
+                        </Tooltip>
+
+                        <Tooltip title="Tải xuống">
+                          <IconButton
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownload(tab.imageUrl, tab.filename);
+                            }}
+                            sx={{
+                              bgcolor: alpha(theme.palette.background.paper, 0.9),
+                              backdropFilter: 'blur(4px)',
+                              '&:hover': {
+                                bgcolor: 'background.paper',
+                              },
+                            }}
+                          >
+                            <Iconify icon="solar:download-bold" width={16} />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+                    )}
+                  </Box>
+
+                  {/* Compact Info */}
+                  {tab.imageUrl && (
+                    <Box
+                      sx={{
+                        mt: 1.5,
+                        p: 1.5,
+                        bgcolor: alpha(theme.palette.grey[100], 0.5),
+                        borderRadius: 2,
+                      }}
+                    >
+                      <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                        {tab.label} • PNG
+                        {originalImage && tab.label === 'Ảnh Gốc' && (
+                          <> • {(originalImage.size / 1024 / 1024).toFixed(1)} MB</>
+                        )}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              ))}
+            </Box>
+          )}
 
           {/* Empty State */}
           {availableTabs.length === 0 && (
@@ -393,27 +471,35 @@ export function ImagePreviewPanel({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                height: 400,
+                height: 200,
                 bgcolor: 'grey.50',
                 borderRadius: 2,
-                border: 2,
+                border: 1,
                 borderStyle: 'dashed',
                 borderColor: 'grey.300',
               }}
             >
-              <Stack alignItems="center" spacing={2}>
-                <Iconify icon="solar:gallery-bold" width={64} color="text.disabled" />
-                <Typography variant="h6" color="text.secondary">
+              <Stack alignItems="center" spacing={1}>
+                <Iconify icon="solar:gallery-bold" width={32} color="text.disabled" />
+                <Typography variant="body2" color="text.secondary" textAlign="center">
                   Chưa có hình ảnh
                 </Typography>
-                <Typography variant="body2" color="text.disabled" textAlign="center">
-                  Upload hình ảnh và chọn style để bắt đầu tạo background
+                <Typography variant="caption" color="text.disabled" textAlign="center">
+                  Upload ảnh để bắt đầu
                 </Typography>
               </Stack>
             </Box>
           )}
         </Box>
-      </CardContent>
-    </Card>
+      </Collapse>
+
+      {/* Image Zoom Modal */}
+      <ImageZoomModal
+        open={zoomModal.open}
+        onClose={handleCloseZoom}
+        imageUrl={zoomModal.imageUrl}
+        alt={zoomModal.alt}
+      />
+    </Paper>
   );
 }

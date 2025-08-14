@@ -5,6 +5,7 @@ import { useMemo, useEffect, useCallback } from 'react';
 
 import axios from 'src/lib/axios';
 import { supabase } from 'src/lib/supabase';
+import { userProfileService } from 'src/lib/supabase-services';
 
 import { AuthContext } from '../auth-context';
 
@@ -28,6 +29,26 @@ export function AuthProvider({ children }) {
 
       if (session) {
         const accessToken = session?.access_token;
+
+        // Đồng bộ user profile nếu cần
+        try {
+          const { data: profile } = await userProfileService.getProfile(session.user.id);
+          if (!profile) {
+            // Tạo profile mới nếu chưa có
+            await userProfileService.upsertProfile(session.user.id, {
+              first_name: session.user.user_metadata?.first_name || '',
+              last_name: session.user.user_metadata?.last_name || '',
+              display_name:
+                session.user.user_metadata?.display_name ||
+                session.user.user_metadata?.full_name ||
+                session.user.email,
+              avatar_url:
+                session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || '',
+            });
+          }
+        } catch (syncError) {
+          console.error('Error syncing user profile:', syncError);
+        }
 
         setState({ user: { ...session, ...session?.user }, loading: false });
         axios.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
@@ -59,8 +80,15 @@ export function AuthProvider({ children }) {
             ...state.user,
             id: state.user?.id,
             accessToken: state.user?.access_token,
-            displayName: state.user?.user_metadata.display_name,
-            role: state.user?.role ?? 'admin',
+            displayName:
+              state.user?.user_metadata?.display_name ||
+              state.user?.user_metadata?.full_name ||
+              state.user?.email,
+            email: state.user?.email,
+            photoURL: state.user?.user_metadata?.avatar_url || state.user?.user_metadata?.picture,
+            role: state.user?.role ?? 'user',
+            firstName: state.user?.user_metadata?.first_name,
+            lastName: state.user?.user_metadata?.last_name,
           }
         : null,
       checkUserSession,

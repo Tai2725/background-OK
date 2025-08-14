@@ -2,7 +2,6 @@ import { paths } from 'src/routes/paths';
 
 import { CONFIG } from 'src/global-config';
 
-import { Label } from 'src/components/label';
 import { Iconify } from 'src/components/iconify';
 import { SvgColor } from 'src/components/svg-color';
 
@@ -36,7 +35,7 @@ export const backgroundGeneratorNavData = [
         title: 'Dashboard',
         path: paths.backgroundGenerator.dashboard,
         icon: ICONS.dashboard,
-        caption: 'Tổng quan và thống kê'
+        caption: 'Tổng quan và thống kê',
       },
       {
         title: 'Generator',
@@ -45,21 +44,10 @@ export const backgroundGeneratorNavData = [
         caption: 'Tạo background cho sản phẩm',
       },
       {
-        title: 'Generator V2',
-        path: paths.backgroundGenerator.generatorV2,
-        icon: ICONS.generator,
-        caption: 'Tạo background tối ưu - Single page',
-        info: (
-          <Label color="success" variant="inverted">
-            V2
-          </Label>
-        ),
-      },
-      {
         title: 'Gallery',
         path: paths.backgroundGenerator.gallery,
         icon: ICONS.gallery,
-        caption: 'Thư viện hình ảnh đã xử lý'
+        caption: 'Thư viện hình ảnh đã xử lý',
       },
     ],
   },
@@ -73,7 +61,7 @@ export const backgroundGeneratorNavData = [
         title: 'Settings',
         path: paths.backgroundGenerator.settings,
         icon: ICONS.settings,
-        caption: 'Cài đặt tài khoản và API'
+        caption: 'Cài đặt tài khoản và API',
       },
     ],
   },

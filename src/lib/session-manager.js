@@ -10,10 +10,10 @@ const SESSION_EXPIRY = 24 * 60 * 60 * 1000; // 24 giờ
 
 export const STEP_STATUS = {
   PENDING: 'pending',
-  IN_PROGRESS: 'in_progress', 
+  IN_PROGRESS: 'in_progress',
   COMPLETED: 'completed',
   ERROR: 'error',
-  SKIPPED: 'skipped'
+  SKIPPED: 'skipped',
 };
 
 export const PROCESSING_STEPS = {
@@ -21,7 +21,7 @@ export const PROCESSING_STEPS = {
   STYLE_SELECTION: 'style_selection',
   BACKGROUND_REMOVAL: 'background_removal',
   BACKGROUND_GENERATION: 'background_generation',
-  FINAL_PROCESSING: 'final_processing'
+  FINAL_PROCESSING: 'final_processing',
 };
 
 export class SessionManager {
@@ -29,12 +29,24 @@ export class SessionManager {
    * Khởi tạo session mới
    */
   static initializeSession(userId) {
+    // Use crypto.randomUUID if available, fallback to timestamp-based ID
+    const generateId = () => {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return `session_${crypto.randomUUID()}`;
+      }
+      // Fallback for environments without crypto.randomUUID
+      const timestamp = Date.now();
+      const random = Math.floor(Math.random() * 1000000).toString(36);
+      return `session_${timestamp}_${random}`;
+    };
+
+    const now = Date.now();
     const session = {
-      id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: generateId(),
       userId,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      expiresAt: Date.now() + SESSION_EXPIRY,
+      createdAt: now,
+      updatedAt: now,
+      expiresAt: now + SESSION_EXPIRY,
       currentStep: PROCESSING_STEPS.UPLOAD,
       steps: {
         [PROCESSING_STEPS.UPLOAD]: {
@@ -42,36 +54,36 @@ export class SessionManager {
           data: null,
           error: null,
           attempts: 0,
-          completedAt: null
+          completedAt: null,
         },
         [PROCESSING_STEPS.STYLE_SELECTION]: {
           status: STEP_STATUS.PENDING,
           data: null,
           error: null,
           attempts: 0,
-          completedAt: null
+          completedAt: null,
         },
         [PROCESSING_STEPS.BACKGROUND_REMOVAL]: {
           status: STEP_STATUS.PENDING,
           data: null,
           error: null,
           attempts: 0,
-          completedAt: null
+          completedAt: null,
         },
         [PROCESSING_STEPS.BACKGROUND_GENERATION]: {
           status: STEP_STATUS.PENDING,
           data: null,
           error: null,
           attempts: 0,
-          completedAt: null
+          completedAt: null,
         },
         [PROCESSING_STEPS.FINAL_PROCESSING]: {
           status: STEP_STATUS.PENDING,
           data: null,
           error: null,
           attempts: 0,
-          completedAt: null
-        }
+          completedAt: null,
+        },
       },
       results: {
         originalImageUrl: null,
@@ -80,8 +92,8 @@ export class SessionManager {
         customPrompt: null,
         backgroundRemovedUrl: null,
         finalImageUrl: null,
-        imageRecordId: null
-      }
+        imageRecordId: null,
+      },
     };
 
     this.saveSession(session);
@@ -97,7 +109,7 @@ export class SessionManager {
       if (!sessionData) return null;
 
       const session = JSON.parse(sessionData);
-      
+
       // Kiểm tra expiry
       if (Date.now() > session.expiresAt) {
         this.clearSession();
@@ -138,11 +150,11 @@ export class SessionManager {
     // Cập nhật step
     step.status = status;
     step.updatedAt = Date.now();
-    
+
     if (data) {
       step.data = data;
     }
-    
+
     if (error) {
       step.error = error;
       step.attempts = (step.attempts || 0) + 1;
@@ -151,12 +163,12 @@ export class SessionManager {
     if (status === STEP_STATUS.COMPLETED) {
       step.completedAt = Date.now();
       step.error = null;
-      
+
       // Tự động chuyển sang bước tiếp theo
       const stepOrder = Object.keys(PROCESSING_STEPS);
-      const currentIndex = stepOrder.findIndex(key => PROCESSING_STEPS[key] === stepName);
+      const currentIndex = stepOrder.findIndex((key) => PROCESSING_STEPS[key] === stepName);
       const nextStepKey = stepOrder[currentIndex + 1];
-      
+
       if (nextStepKey) {
         session.currentStep = PROCESSING_STEPS[nextStepKey];
       }
@@ -188,7 +200,7 @@ export class SessionManager {
       PROCESSING_STEPS.STYLE_SELECTION,
       PROCESSING_STEPS.BACKGROUND_REMOVAL,
       PROCESSING_STEPS.BACKGROUND_GENERATION,
-      PROCESSING_STEPS.FINAL_PROCESSING
+      PROCESSING_STEPS.FINAL_PROCESSING,
     ];
 
     const targetIndex = stepOrder.indexOf(stepName);
@@ -217,7 +229,7 @@ export class SessionManager {
       PROCESSING_STEPS.STYLE_SELECTION,
       PROCESSING_STEPS.BACKGROUND_REMOVAL,
       PROCESSING_STEPS.BACKGROUND_GENERATION,
-      PROCESSING_STEPS.FINAL_PROCESSING
+      PROCESSING_STEPS.FINAL_PROCESSING,
     ];
 
     for (const stepName of stepOrder) {
@@ -243,11 +255,23 @@ export class SessionManager {
     step.status = STEP_STATUS.PENDING;
     step.error = null;
     step.completedAt = null;
-    
+
     // Reset current step về bước này
     session.currentStep = stepName;
 
     return this.saveSession(session);
+  }
+
+  /**
+   * Reset session về trạng thái ban đầu (giữ userId)
+   */
+  static resetSession() {
+    const currentSession = this.getCurrentSession();
+    if (!currentSession) return false;
+
+    // Tạo session mới với cùng userId
+    const newSession = this.initializeSession(currentSession.userId);
+    return newSession;
   }
 
   /**
@@ -271,8 +295,8 @@ export class SessionManager {
     if (!session) return 0;
 
     const steps = Object.values(session.steps);
-    const completedSteps = steps.filter(step => step.status === STEP_STATUS.COMPLETED).length;
-    
+    const completedSteps = steps.filter((step) => step.status === STEP_STATUS.COMPLETED).length;
+
     return Math.round((completedSteps / steps.length) * 100);
   }
 
@@ -283,7 +307,7 @@ export class SessionManager {
     const session = this.getCurrentSession();
     if (!session) return false;
 
-    return Object.values(session.steps).some(step => step.status === STEP_STATUS.ERROR);
+    return Object.values(session.steps).some((step) => step.status === STEP_STATUS.ERROR);
   }
 
   /**

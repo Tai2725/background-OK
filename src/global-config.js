@@ -61,5 +61,5 @@ export const CONFIG = {
   runware: {
     apiKey: process.env.NEXT_PUBLIC_RUNWARE_API_KEY,
     apiUrl: process.env.NEXT_PUBLIC_RUNWARE_API_URL,
-  }
+  },
 };

@@ -12,10 +12,10 @@ export async function GET(request) {
 
   if (code) {
     const supabase = createClient(CONFIG.supabase.url, CONFIG.supabase.key);
-    
+
     try {
       const { error } = await supabase.auth.exchangeCodeForSession(code);
-      
+
       if (!error) {
         // Redirect to dashboard or specified next page
         return NextResponse.redirect(`${origin}${next}`);

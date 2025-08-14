@@ -16,10 +16,10 @@ import {
 import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hooks';
 
-import { useAuthContext } from 'src/auth/hooks';
-
 import { Iconify } from 'src/components/iconify';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
+
+import { useAuthContext } from 'src/auth/hooks';
 
 // ----------------------------------------------------------------------
 
@@ -213,10 +213,10 @@ export function BackgroundGeneratorDashboardView() {
         </Typography>
         <Card>
           <CardContent sx={{ textAlign: 'center', py: 8 }}>
-            <Iconify 
-              icon="solar:history-bold-duotone" 
-              width={64} 
-              sx={{ color: 'text.disabled', mb: 2 }} 
+            <Iconify
+              icon="solar:history-bold-duotone"
+              width={64}
+              sx={{ color: 'text.disabled', mb: 2 }}
             />
             <Typography variant="h6" color="text.secondary">
               Chưa có hoạt động nào

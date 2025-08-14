@@ -1,0 +1,96 @@
+/* Background Style Selector Layout Optimization */
+
+.styleGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 600px) {
+  .styleGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+}
+
+@media (min-width: 600px) and (max-width: 960px) {
+  .styleGrid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+}
+
+@media (min-width: 960px) and (max-width: 1280px) {
+  .styleGrid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .styleGrid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+  }
+}
+
+.styleCard {
+  height: 160px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.15s ease;
+}
+
+.styleCard:hover {
+  transform: translateY(-2px);
+}
+
+.cardContent {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.cardTitle {
+  margin-bottom: 4px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  line-height: 1.2;
+}
+
+.cardDescription {
+  margin-bottom: 8px;
+  font-size: 0.7rem;
+  line-height: 1.3;
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.promptPreview {
+  padding: 8px;
+  border-radius: 6px;
+  margin-top: auto;
+  border: 0.5px solid;
+}
+
+.promptText {
+  font-size: 0.65rem;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-weight: 500;
+}
